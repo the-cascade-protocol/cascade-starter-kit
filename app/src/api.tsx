@@ -30,8 +30,10 @@ export interface Answered {
   readonly unheld?: readonly string[];
   /** The patient profiles no one has said whether they are the subject's. */
   readonly waiting?: readonly Waiting[];
-  /** While the pod takes in the app's newer tables, after it opened: these are its answers as it was opened. */
+  /** Until the pod's open has settled, which may take something in: these are its answers as it was opened. */
   readonly adopting?: true;
+  /** Given `wait`: the open took something in, so these answers are not the pod's as it was opened. */
+  readonly adopted?: true;
 }
 
 /** What the tables say of a pod's codes and variants, as PodApi sends it: each `Map` as its pairs. */

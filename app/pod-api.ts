@@ -595,6 +595,7 @@ export function podApi(
   }
   type Answered = Awaited<ReturnType<typeof asked>> & {
     readonly adopting?: true;
+    readonly adopted?: true;
   };
 
   /**
@@ -628,8 +629,10 @@ export function podApi(
   }
 
   /**
-   * The pod's answers; `adopting` while its open of newer tables has not settled, when they are the pod's as it was
-   * opened, or when that open settled while they were asked. With `wait`, once that open has settled.
+   * The pod's answers; `adopting` while its open has not settled, when they are the pod's as it was opened, or when
+   * that open settled while they were asked: a pod's open settles after its first read even where it takes in nothing.
+   * With `wait`, once that open has settled, and `adopted` when it took something in, so that the page is read again
+   * only for that.
    */
   async function answers({
     pod: given,
@@ -647,7 +650,7 @@ export function podApi(
     const mixed = !settledBefore && adoption.changed;
     if (adoption.done && !mixed) {
       last.set(name, asking);
-      return asking;
+      return wait && adoption.changed ? { ...asking, adopted: true } : asking;
     }
     const answered: Answered = { ...asking, adopting: true };
     if (!adoption.done) last.set(name, answered);
