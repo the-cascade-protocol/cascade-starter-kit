@@ -630,9 +630,9 @@ export function podApi(
 
   /**
    * The pod's answers; `adopting` while its open has not settled, when they are the pod's as it was opened, or when
-   * that open settled while they were asked: a pod's open settles after its first read even where it takes in nothing.
-   * With `wait`, once that open has settled, and `adopted` when it took something in, so that the page is read again
-   * only for that.
+   * that open settled while they were asked: a pod whose open takes in nothing has it settled before its first read
+   * returns. With `wait`, once that open has settled, and `adopted` when it took something in, so that the page is read
+   * again only for that: an open that settles with nothing taken in (a close, a match that wrote nothing) is not one.
    */
   async function answers({
     pod: given,
