@@ -302,8 +302,10 @@ interface Underway {
   /** Why the pod holds no record of the connect, when it does not; the pull goes on. */
   notRecorded?: string;
   retry?: boolean;
-  /** The profiles this pull's own import filed, of which a retry claims those still unanswered. */
+  /** The profiles this pull's own import named, of which a retry claims those still unanswered. */
   profiles?: readonly string[];
+  /** How many of them that import was to claim, which no answer or earlier claim spared: a retry titles the pod when it was one. */
+  claiming?: number;
   /** That the matcher run a bring-in owes has not finished, so a retry runs one whatever it files. */
   matchOwed?: boolean;
   imported?: boolean;
@@ -1393,15 +1395,17 @@ export function podApi(
         const earlier = connection.profiles;
         const done = await pod.import(files, {
           match: false,
-          onProgress: (part) =>
-            // The matcher's run is the step after the claims.
-            told(
+          onProgress: (part) => {
+            if (
               earlier === undefined &&
-                part.part === "judging" &&
-                part.of !== undefined
-                ? { ...part, of: part.of + 1 }
-                : part,
-            ),
+              part.part === "judging" &&
+              part.of !== undefined
+            ) {
+              if (part.done === 0) connection.claiming = part.of;
+              // The matcher's run is the step after the claims.
+              told({ ...part, of: part.of + 1 });
+            } else told(part);
+          },
           ...(earlier === undefined && {
             claimProfiles: (named: readonly string[]) => {
               connection.profiles = named;
@@ -1419,15 +1423,23 @@ export function podApi(
         if (filed) connection.matchOwed = true;
         let titling: boolean;
         if (earlier === undefined) {
+          // A profile the import was told to claim and left unclaimed was not claimed: its About was refused. A profile
+          // something already answers is not among the unclaimed. The retry claims it, and says why it cannot.
+          const refused = done.unclaimedProfiles.filter((profile) =>
+            connection.profiles?.includes(profile),
+          );
+          if (refused.length > 0)
+            throw new Error(`the About of ${refused.join(", ")} was not filed`);
           const claimed = done.claimedProfiles.length;
           if (claimed === 0) told({ part: "judging", done: 0, of: 1 });
           // A profile's label names no patient, so the title is the bundle's first Patient's: right when one profile was filed
           // (a two-Patient pull with one of them filed is titled after the first even if the second was filed), and never when two were.
           titling = claimed === 1 && done.unclaimedProfiles.length === 0;
         } else {
-          connection.profiles = [
-            ...new Set([...earlier, ...done.unclaimedProfiles]),
-          ];
+          const newer = done.unclaimedProfiles.filter(
+            (profile) => !earlier.includes(profile),
+          );
+          connection.profiles = [...earlier, ...newer];
           const profiles = await awaitingAnswer(pod, connection.profiles);
           if (profiles.length > 0) connection.matchOwed = true;
           told({ part: "judging", done: 0, of: profiles.length + 1 });
@@ -1435,7 +1447,9 @@ export function podApi(
             await claim(pod, profile);
             told({ part: "judging", done: at + 1, of: profiles.length + 1 });
           }
-          titling = profiles.length > 0 && connection.profiles.length === 1;
+          titling =
+            profiles.length > 0 &&
+            (connection.claiming ?? 0) + newer.length === 1;
         }
         if (titling) await titledAfter(name, pod, patientName(pulled!.bundle));
         if (connection.matchOwed === true) {
