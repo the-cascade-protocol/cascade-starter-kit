@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, readdir, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -1778,56 +1778,114 @@ const namedAfterBringIn = once(async () => {
 <${owner.owner}> a prov:Person .
 `;
   /**
-   * What a pod's `import` gives with `result` laid over it, and its first `judge` failing when `judgeFails`, after the
-   * person has said the profile it claims is not them when `disclaimsFirst`.
+   * What a pod's `import` gives with `result` laid over it, and its first `import` failing when `judgeFails`, as the claims
+   * it makes fail to be written: the import has filed the pull and been told its profiles, and no claim is filed. When
+   * `disclaimsFirst`, the person has said the profiles the pull names are not them by the time the import has failed. The
+   * import names `alsoNames` besides the profiles of the pull, as a pull does of a profile the pod already answered, and
+   * with `refusesAbout` it reports the claims it filed as left unclaimed, as it does of an About that was refused.
    */
   const doing =
     ({
       result,
       judgeFails,
       disclaimsFirst,
+      alsoNames,
+      refusesAbout,
     }: {
       result?: object;
       judgeFails?: boolean;
       disclaimsFirst?: boolean;
+      alsoNames?: string[];
+      refusesAbout?: boolean;
     }) =>
     (pod: object) => {
       let failing = judgeFails === true || disclaimsFirst === true;
       return new Proxy(pod, {
         get(target, key) {
           const value = Reflect.get(target, key, target);
-          if (key === "import" && result !== undefined)
-            return async (...args: unknown[]) => ({
-              ...(await (value as (...a: unknown[]) => Promise<object>).apply(
-                target,
-                args,
-              )),
-              ...result,
-            });
-          if (key === "judge" && failing)
+          if (
+            key === "import" &&
+            (result !== undefined ||
+              failing ||
+              alsoNames !== undefined ||
+              refusesAbout === true)
+          )
             return async (...args: unknown[]) => {
-              if (!failing)
-                return (value as (...a: unknown[]) => Promise<object>).apply(
-                  target,
-                  args,
-                );
+              const [files, options] = args as [
+                unknown,
+                {
+                  claimProfiles?: (named: string[]) => string[];
+                  onProgress?: (part: object) => unknown;
+                },
+              ];
+              const failsHere = failing;
               failing = false;
-              if (disclaimsFirst === true)
-                for (const { profile } of await (
-                  target as unknown as {
-                    ask(question: string): Promise<{ profile: string }[]>;
-                  }
-                ).ask(REVIEW))
-                  await (value as (...a: unknown[]) => Promise<object>).call(
-                    target,
-                    notAbout(target as never, profile),
-                  );
-              throw new Error("no room to write the About");
+              const given = options.claimProfiles;
+              try {
+                const done = (await (
+                  value as (...a: unknown[]) => Promise<object>
+                ).call(target, files, {
+                  ...options,
+                  ...(alsoNames !== undefined &&
+                    given !== undefined && {
+                      claimProfiles: (named: string[]) =>
+                        given([...named, ...alsoNames]),
+                    }),
+                  ...(failsHere && {
+                    // The claims are to be filed, as the import's first `judging` mark says, and none is.
+                    onProgress: async (part: {
+                      part: string;
+                      done?: number;
+                    }) => {
+                      await options.onProgress?.(part);
+                      if (part.part === "judging" && part.done === 0)
+                        throw new Error("no room to write the About");
+                    },
+                  }),
+                })) as {
+                  claimedProfiles: { profile: string }[];
+                  unclaimedProfiles: string[];
+                };
+                return {
+                  ...done,
+                  ...(refusesAbout === true && {
+                    claimedProfiles: [],
+                    unclaimedProfiles: done.claimedProfiles.map(
+                      ({ profile }) => profile,
+                    ),
+                  }),
+                  ...result,
+                };
+              } catch (error) {
+                if (failsHere && disclaimsFirst === true)
+                  for (const { profile } of await (
+                    target as unknown as {
+                      ask(question: string): Promise<{ profile: string }[]>;
+                    }
+                  ).ask(REVIEW))
+                    await (
+                      Reflect.get(target, "judge", target) as (
+                        ...a: unknown[]
+                      ) => Promise<object>
+                    ).call(target, notAbout(target as never, profile));
+                throw error;
+              }
             };
           return typeof value === "function" ? value.bind(target) : value;
         },
       });
     };
+  /**
+   * The one folder every scenario below is made in, emptied before each: the runtime keeps what it reads beside a folder
+   * for as long as the process lives, about 170 MB a folder, so a folder to each scenario took this file past 4 GB.
+   */
+  const at = await mkdtemp(join(tmpdir(), "pod-api-named-"));
+  folders.push(at);
+  const emptied = async () => {
+    for (const entry of await readdir(at))
+      if (entry !== ".tables")
+        await rm(join(at, entry), { recursive: true, force: true });
+  };
   /**
    * What `make` leaves in the pod, then a bring, tried again when it fails: on the same app, or, when `restarts`, on one
    * opened again over the same folder, as after the app was stopped between the failed claim and the retry.
@@ -1839,11 +1897,12 @@ const namedAfterBringIn = once(async () => {
       result?: object;
       judgeFails?: boolean;
       disclaimsFirst?: boolean;
+      alsoNames?: string[];
+      refusesAbout?: boolean;
       restarts?: boolean;
     },
   ) => {
-    const at = await mkdtemp(join(tmpdir(), "pod-api-named-"));
-    folders.push(at);
+    await emptied();
     const opened = (doingOver?: typeof over) => {
       const base = host(at);
       return api({
@@ -1964,6 +2023,14 @@ const namedAfterBringIn = once(async () => {
     ),
     disclaimedBeforeTheRetry: await brought("rowan-ellery-marsh", untitled, {
       disclaimsFirst: true,
+    }),
+    retriedBesideAnAnsweredProfile: await brought(
+      "rowan-ellery-marsh",
+      untitled,
+      { judgeFails: true, alsoNames: ["urn:uuid:answered-before-this-pull"] },
+    ),
+    aboutRefused: await brought("rowan-ellery-marsh", untitled, {
+      refusesAbout: true,
     }),
     retriedAfterARestart: await brought("rowan-ellery-marsh", untitled, {
       judgeFails: true,
@@ -2161,6 +2228,7 @@ const partsOnce = once(async () => {
  * bring whose `match` fails once and is then tried again.
  */
 const matchesOnce = once(async () => {
+  const asked: unknown[] = [];
   const recorded = (wrote: number[], matches: unknown[], failsOnce = false) => {
     let failing = failsOnce;
     return (pod: object) =>
@@ -2174,6 +2242,14 @@ const matchesOnce = once(async () => {
               ).apply(target, args);
               wrote.push(done.wrote.length);
               return done;
+            };
+          if (key === "ask")
+            return async (...args: unknown[]) => {
+              asked.push(args[0]);
+              return (value as (...a: unknown[]) => Promise<object>).apply(
+                target,
+                args,
+              );
             };
           if (key === "match")
             return async (...args: unknown[]) => {
@@ -2230,6 +2306,7 @@ const matchesOnce = once(async () => {
     (await connected(built, "ada")).connection,
   );
   const matchesAfterFirst = matches.length;
+  const askedAfterFirst = [...asked];
   const secondShown = await bringing(
     built,
     (await connected(built, "ada")).connection,
@@ -2245,6 +2322,7 @@ const matchesOnce = once(async () => {
       wrote,
       matches,
       matchesAfterFirst,
+      askedAfterFirst,
       firstShown,
       secondShown,
       failed,
@@ -2416,6 +2494,15 @@ describe("Connecting a pod to a hospital and bringing its records in · api.hosp
       assert.equal(matchesAfterFirst, 1);
     });
 
+    it("asks no `profile/What needs review` before it claims the profile of a pull it files on a first try", async () => {
+      const { askedAfterFirst, firstShown } = await matchesOnce();
+      assert.equal(firstShown.broughtIn, true);
+      assert.deepEqual(
+        askedAfterFirst.filter((question) => question === REVIEW),
+        [],
+      );
+    });
+
     it("runs no matcher on a second pull of the same records, which files nothing and claims nothing", async () => {
       const { wrote, matches, secondShown } = await matchesOnce();
       assert.equal(wrote[1], 0);
@@ -2474,6 +2561,24 @@ describe("Connecting a pod to a hospital and bringing its records in · api.hosp
         retriedBesideAnotherPull.made,
       );
       assert.equal(retriedBesideAnotherPull.medications, retried.medications);
+    });
+
+    it("titles a pod on a retry whose pull names a profile already answered besides the one it claims, as it does when the pull names that one alone", async () => {
+      const { retriedBesideAnAnsweredProfile, retried } =
+        await namedAfterBringIn();
+      assert.match(
+        retriedBesideAnAnsweredProfile.failedFirst ?? "",
+        /^Not brought in: /,
+      );
+      assert.equal(retriedBesideAnAnsweredProfile.title, retried.title);
+      assert.equal(retriedBesideAnAnsweredProfile.unanswered, 0);
+    });
+
+    it("fails a bring, to be tried again as one whose claim failed, when the import leaves unclaimed a profile it was asked to claim", async () => {
+      const { aboutRefused, untitled } = await namedAfterBringIn();
+      assert.match(aboutRefused.failedFirst ?? "", /^Not brought in: /);
+      assert.equal(untitled.failedFirst, undefined);
+      assert.equal(aboutRefused.medications, untitled.medications);
     });
 
     it("leaves a profile unclaimed when its owner said it is not them after the first claim failed and before the retry", async () => {
