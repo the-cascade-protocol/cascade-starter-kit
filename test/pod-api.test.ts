@@ -2129,6 +2129,107 @@ const partsOnce = once(async () => {
 });
 
 /**
+ * Bring-ins over a pod whose `import` and `match` are recorded: a pod's first bring, which files the pull and claims its
+ * profile; a second connection's bring of the same pull, which files nothing and claims nothing; and, on another app, a
+ * bring whose `match` fails once and is then tried again.
+ */
+const matchesOnce = once(async () => {
+  const recorded = (wrote: number[], matches: unknown[], failsOnce = false) => {
+    let failing = failsOnce;
+    return (pod: object) =>
+      new Proxy(pod, {
+        get(target, key) {
+          const value = Reflect.get(target, key, target);
+          if (key === "import")
+            return async (...args: unknown[]) => {
+              const done = await (
+                value as (...a: unknown[]) => Promise<{ wrote: unknown[] }>
+              ).apply(target, args);
+              wrote.push(done.wrote.length);
+              return done;
+            };
+          if (key === "match")
+            return async (...args: unknown[]) => {
+              matches.push(args[0]);
+              if (failing) {
+                failing = false;
+                throw new Error("the matcher stopped");
+              }
+              return (value as (...a: unknown[]) => Promise<object>).apply(
+                target,
+                args,
+              );
+            };
+          return typeof value === "function" ? value.bind(target) : value;
+        },
+      });
+  };
+  const over = async (
+    wrote: number[],
+    matches: unknown[],
+    failsOnce?: boolean,
+  ) => {
+    const { built } = await fresh((folder) => ({
+      pods: new Proxy(
+        host(folder).pods as unknown as {
+          open(...a: unknown[]): Promise<object>;
+        },
+        {
+          get: (target, key) =>
+            key === "open"
+              ? async (...args: unknown[]) =>
+                  recorded(
+                    wrote,
+                    matches,
+                    failsOnce,
+                  )(await target.open(...args))
+              : Reflect.get(target, key, target),
+        },
+      ),
+    }));
+    await built.makePod({ person: "Ada" });
+    return built;
+  };
+  const bringing = async (built: Api, n: number) => {
+    const at = { pod: "ada", connection: n };
+    await built.bring(at);
+    return built.connection({ ...at, wait: true });
+  };
+  const wrote: number[] = [];
+  const matches: unknown[] = [];
+  const built = await over(wrote, matches);
+  const firstShown = await bringing(
+    built,
+    (await connected(built, "ada")).connection,
+  );
+  const matchesAfterFirst = matches.length;
+  const secondShown = await bringing(
+    built,
+    (await connected(built, "ada")).connection,
+  );
+  const failedMatches: unknown[] = [];
+  const failing = await over([], failedMatches, true);
+  const logged = mock.method(console, "error", () => undefined);
+  try {
+    const { connection } = await connected(failing, "ada");
+    const failed = await bringing(failing, connection);
+    const retried = await bringing(failing, connection);
+    return {
+      wrote,
+      matches,
+      matchesAfterFirst,
+      firstShown,
+      secondShown,
+      failed,
+      retried,
+      failedMatches,
+    };
+  } finally {
+    logged.mock.restore();
+  }
+});
+
+/**
  * A connection is one sign-in at one hospital and the pull that follows: `api.connection()` says how far it has
  * got and can wait for it to change, and `api.bring()` imports what was pulled into the pod. What goes wrong at the
  * hospital is said on the connection, and an error of the app's own is logged and said in one fixed sentence.
@@ -2279,6 +2380,28 @@ describe("Connecting a pod to a hospital and bringing its records in · api.hosp
         "saving",
         "judging",
       ]);
+    });
+
+    it("runs the matcher once on a pull that files records and claims their profile", async () => {
+      const { wrote, matchesAfterFirst, firstShown } = await matchesOnce();
+      assert.ok(wrote[0]! > 0);
+      assert.equal(firstShown.broughtIn, true);
+      assert.equal(matchesAfterFirst, 1);
+    });
+
+    it("runs no matcher on a second pull of the same records, which files nothing and claims nothing", async () => {
+      const { wrote, matches, secondShown } = await matchesOnce();
+      assert.equal(wrote[1], 0);
+      assert.equal(secondShown.broughtIn, true);
+      assert.equal(secondShown.failed, undefined);
+      assert.equal(matches.length, 1);
+    });
+
+    it("runs the matcher again on a retried bring-in whose matcher run failed, though the retry files and claims nothing", async () => {
+      const { failed, retried, failedMatches } = await matchesOnce();
+      assert.match(failed.failed ?? "", /^Not brought in: /);
+      assert.equal(retried.broughtIn, true);
+      assert.equal(failedMatches.length, 2);
     });
 
     it('imports a pull once: a second call returns `step: "pulled"`, and the connection has `broughtIn: true`', async () => {
