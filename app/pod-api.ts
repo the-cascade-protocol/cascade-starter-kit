@@ -304,6 +304,8 @@ interface Underway {
   retry?: boolean;
   /** The profiles this pull's own import filed, of which a retry claims those still unanswered. */
   profiles?: readonly string[];
+  /** That the matcher run a bring-in owes has not finished, so a retry runs one whatever it files. */
+  matchOwed?: boolean;
   imported?: boolean;
   broughtIn?: boolean;
 }
@@ -1380,7 +1382,8 @@ export function podApi(
     // About or NotAbout does not already answer is claimed once the import has filed it, and the matcher runs after.
     // An import of a pull the pod already holds files nothing and so finds no profile: a bring retried after its claim
     // failed claims what is left of the profiles this pull's own import filed, and the matcher then rechecks the whole
-    // pod. No hospital's other profile is claimed: the sign-in was the person's yes for this patient only. A pull the
+    // pod. A pull that files nothing and claims nothing runs no matcher, unless an earlier try of this bring-in began
+    // one that did not finish (`matchOwed`). No hospital's other profile is claimed: the sign-in was the person's yes for this patient only. A pull the
     // pod held before this connection's import is claimed nothing: no question tells which import brought a pull's
     // documents (`pod/What each import brought in` names records, not documents). The pod's page lists what waits
     // (`waiting`): a stopgap until the runtime can name a pull's profiles (runtime-js#858).
@@ -1403,6 +1406,7 @@ export function podApi(
           ]),
         ];
         const profiles = await awaitingAnswer(pod, connection.profiles);
+        if (filed || profiles.length > 0) connection.matchOwed = true;
         told({ part: "judging", done: 0, of: profiles.length + 1 });
         for (const [at, profile] of profiles.entries()) {
           await claim(pod, profile);
@@ -1412,7 +1416,10 @@ export function podApi(
         // (a two-Patient pull with one of them filed is titled after the first even if the second was filed), and never when two were.
         if (profiles.length > 0 && connection.profiles.length === 1)
           await titledAfter(name, pod, patientName(pulled!.bundle));
-        await pod.match(filed ? done.activity : undefined);
+        if (connection.matchOwed === true) {
+          await pod.match(filed ? done.activity : undefined);
+          connection.matchOwed = false;
+        }
         connection.imported = true;
         connection.broughtIn = true;
       } catch (error) {
