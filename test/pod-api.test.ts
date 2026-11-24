@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, readdir, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -1849,6 +1849,17 @@ const namedAfterBringIn = once(async () => {
       });
     };
   /**
+   * The one folder every scenario below is made in, emptied before each: the runtime keeps what it reads beside a folder
+   * for as long as the process lives, about 170 MB a folder, so a folder to each scenario took this file past 4 GB.
+   */
+  const at = await mkdtemp(join(tmpdir(), "pod-api-named-"));
+  folders.push(at);
+  const emptied = async () => {
+    for (const entry of await readdir(at))
+      if (entry !== ".tables")
+        await rm(join(at, entry), { recursive: true, force: true });
+  };
+  /**
    * What `make` leaves in the pod, then a bring, tried again when it fails: on the same app, or, when `restarts`, on one
    * opened again over the same folder, as after the app was stopped between the failed claim and the retry.
    */
@@ -1864,8 +1875,7 @@ const namedAfterBringIn = once(async () => {
       restarts?: boolean;
     },
   ) => {
-    const at = await mkdtemp(join(tmpdir(), "pod-api-named-"));
-    folders.push(at);
+    await emptied();
     const opened = (doingOver?: typeof over) => {
       const base = host(at);
       return api({
