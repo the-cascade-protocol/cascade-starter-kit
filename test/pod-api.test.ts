@@ -1751,8 +1751,9 @@ const namedAfterBringIn = once(async () => {
 <${owner.owner}> a prov:Person .
 `;
   /**
-   * What a pod's `import` gives with `result` laid over it, and its first `judge` failing when `judgeFails`, after the
-   * person has said the profile it claims is not them when `disclaimsFirst`.
+   * What a pod's `import` gives with `result` laid over it, and its first `import` failing when `judgeFails`, as the claims
+   * it makes fail to be written: the import has filed the pull and been told its profiles, and no claim is filed. When
+   * `disclaimsFirst`, the person has said the profiles the pull names are not them by the time the import has failed.
    */
   const doing =
     ({
@@ -1769,33 +1770,45 @@ const namedAfterBringIn = once(async () => {
       return new Proxy(pod, {
         get(target, key) {
           const value = Reflect.get(target, key, target);
-          if (key === "import" && result !== undefined)
-            return async (...args: unknown[]) => ({
-              ...(await (value as (...a: unknown[]) => Promise<object>).apply(
-                target,
-                args,
-              )),
-              ...result,
-            });
-          if (key === "judge" && failing)
+          if (key === "import" && (result !== undefined || failing))
             return async (...args: unknown[]) => {
-              if (!failing)
-                return (value as (...a: unknown[]) => Promise<object>).apply(
-                  target,
-                  args,
-                );
+              const [files, options] = args as [
+                unknown,
+                { claimProfiles?: (named: string[]) => string[] },
+              ];
+              const failsHere = failing;
               failing = false;
-              if (disclaimsFirst === true)
-                for (const { profile } of await (
-                  target as unknown as {
-                    ask(question: string): Promise<{ profile: string }[]>;
-                  }
-                ).ask(REVIEW))
-                  await (value as (...a: unknown[]) => Promise<object>).call(
-                    target,
-                    notAbout(target as never, profile),
-                  );
-              throw new Error("no room to write the About");
+              const given = options.claimProfiles;
+              try {
+                return {
+                  ...(await (
+                    value as (...a: unknown[]) => Promise<object>
+                  ).call(target, files, {
+                    ...options,
+                    ...(failsHere &&
+                      given !== undefined && {
+                        claimProfiles: (named: string[]) => {
+                          given(named);
+                          throw new Error("no room to write the About");
+                        },
+                      }),
+                  })),
+                  ...result,
+                };
+              } catch (error) {
+                if (failsHere && disclaimsFirst === true)
+                  for (const { profile } of await (
+                    target as unknown as {
+                      ask(question: string): Promise<{ profile: string }[]>;
+                    }
+                  ).ask(REVIEW))
+                    await (
+                      Reflect.get(target, "judge", target) as (
+                        ...a: unknown[]
+                      ) => Promise<object>
+                    ).call(target, notAbout(target as never, profile));
+                throw error;
+              }
             };
           return typeof value === "function" ? value.bind(target) : value;
         },
@@ -2134,6 +2147,7 @@ const partsOnce = once(async () => {
  * bring whose `match` fails once and is then tried again.
  */
 const matchesOnce = once(async () => {
+  const asked: unknown[] = [];
   const recorded = (wrote: number[], matches: unknown[], failsOnce = false) => {
     let failing = failsOnce;
     return (pod: object) =>
@@ -2147,6 +2161,14 @@ const matchesOnce = once(async () => {
               ).apply(target, args);
               wrote.push(done.wrote.length);
               return done;
+            };
+          if (key === "ask")
+            return async (...args: unknown[]) => {
+              asked.push(args[0]);
+              return (value as (...a: unknown[]) => Promise<object>).apply(
+                target,
+                args,
+              );
             };
           if (key === "match")
             return async (...args: unknown[]) => {
@@ -2203,6 +2225,7 @@ const matchesOnce = once(async () => {
     (await connected(built, "ada")).connection,
   );
   const matchesAfterFirst = matches.length;
+  const askedAfterFirst = [...asked];
   const secondShown = await bringing(
     built,
     (await connected(built, "ada")).connection,
@@ -2218,6 +2241,7 @@ const matchesOnce = once(async () => {
       wrote,
       matches,
       matchesAfterFirst,
+      askedAfterFirst,
       firstShown,
       secondShown,
       failed,
@@ -2387,6 +2411,15 @@ describe("Connecting a pod to a hospital and bringing its records in · api.hosp
       assert.ok(wrote[0]! > 0);
       assert.equal(firstShown.broughtIn, true);
       assert.equal(matchesAfterFirst, 1);
+    });
+
+    it("asks no `profile/What needs review` before it claims the profile of a pull it files on a first try", async () => {
+      const { askedAfterFirst, firstShown } = await matchesOnce();
+      assert.equal(firstShown.broughtIn, true);
+      assert.deepEqual(
+        askedAfterFirst.filter((question) => question === REVIEW),
+        [],
+      );
     });
 
     it("runs no matcher on a second pull of the same records, which files nothing and claims nothing", async () => {
