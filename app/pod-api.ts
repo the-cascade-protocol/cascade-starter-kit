@@ -1399,6 +1399,7 @@ export function podApi(
           return;
         }
         const filed = done.wrote.length > 0;
+        if (filed) connection.matchOwed = true;
         connection.profiles = [
           ...new Set([
             ...(connection.profiles ?? []),
@@ -1406,7 +1407,7 @@ export function podApi(
           ]),
         ];
         const profiles = await awaitingAnswer(pod, connection.profiles);
-        if (filed || profiles.length > 0) connection.matchOwed = true;
+        if (profiles.length > 0) connection.matchOwed = true;
         told({ part: "judging", done: 0, of: profiles.length + 1 });
         for (const [at, profile] of profiles.entries()) {
           await claim(pod, profile);
