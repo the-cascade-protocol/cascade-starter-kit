@@ -658,8 +658,13 @@ describe("Reading a pod for its screens · api.pods(), api.pod(), api.answers(),
       );
     });
 
-    it("returns no `adopting` for a pod whose open had nothing newer to take in", () => {
-      assert.equal(read.adopting, undefined);
+    it("returns, given `wait`, neither `adopting` nor `adopted` for a pod whose open had nothing to take in", async () => {
+      const waited = await crossing(api(host())).answers({
+        pod: STATIN,
+        wait: true,
+      });
+      assert.equal(waited.adopting, undefined);
+      assert.equal(waited.adopted, undefined);
     });
   });
 
@@ -668,7 +673,24 @@ describe("Reading a pod for its screens · api.pods(), api.pod(), api.answers(),
     let first: Output;
     let waitedEarly: boolean;
     let waited: Output;
+    let tookIn: Output;
     before(async () => {
+      const taking = crossing(
+        api({
+          ...host(),
+          pods: {
+            names: async () => ["taking"],
+            title: async () => undefined,
+            open: async () => ({
+              opened: Promise.resolve({ wrote: [], unheld: [] }),
+              ask: async () => [],
+              unheldTableVersions: async () => [],
+              close: async () => {},
+            }),
+          },
+        }),
+      );
+      tookIn = await taking.answers({ pod: "taking", wait: true });
       calls = [];
       let release!: () => void;
       const opened = new Promise<undefined>((resolve) => {
@@ -716,6 +738,11 @@ describe("Reading a pod for its screens · api.pods(), api.pod(), api.answers(),
     it("returns, given `wait`, once that open is done, without `adopting`", () => {
       assert.equal(waitedEarly, false);
       assert.equal(waited.adopting, undefined);
+    });
+
+    it("returns, given `wait`, `adopted` when that open took something in, and none when it took in nothing", () => {
+      assert.equal(tookIn.adopted, true);
+      assert.equal(waited.adopted, undefined);
     });
   });
 
