@@ -808,7 +808,7 @@ function useFollowed(
   return now !== undefined && now.of === read ? now.now : read;
 }
 
-/** While the pod takes in the app's newer tables, the page is read again once it has. */
+/** While the pod's open has not settled, the page is read again once it has, if the open took something in. */
 function useAdopted(pod: string, adopting: boolean): void {
   const { api } = useHost();
   const { revalidate } = useRevalidator();
@@ -816,8 +816,8 @@ function useAdopted(pod: string, adopting: boolean): void {
     if (!adopting) return;
     let live = true;
     api.answers({ pod, wait: true }).then(
-      () => {
-        if (live) void revalidate();
+      (read) => {
+        if (live && read.adopted === true) void revalidate();
       },
       () => undefined,
     );
