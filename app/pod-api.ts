@@ -1379,19 +1379,36 @@ export function podApi(
       changed(connection);
     };
     // The sign-in was the patient's, which is the person's yes to each profile the pull names, so each one a counting
-    // About or NotAbout does not already answer is claimed once the import has filed it, and the matcher runs after.
-    // An import of a pull the pod already holds files nothing and so finds no profile: a bring retried after its claim
-    // failed claims what is left of the profiles this pull's own import filed, and the matcher then rechecks the whole
-    // pod. A pull that files nothing and claims nothing runs no matcher, unless an earlier try of this bring-in began
-    // one that did not finish (`matchOwed`). No hospital's other profile is claimed: the sign-in was the person's yes for this patient only. A pull the
-    // pod held before this connection's import is claimed nothing: no question tells which import brought a pull's
-    // documents (`pod/What each import brought in` names records, not documents). The pod's page lists what waits
-    // (`waiting`): a stopgap until the runtime can name a pull's profiles (runtime-js#858).
+    // About or NotAbout does not already answer is claimed by the import that files it, in the one call: the import
+    // is told the profiles it names, and the pod is rebuilt once for the import and its claims. The matcher runs
+    // after. A bring retried after its import threw (`connection.profiles` holds what that import named) imports
+    // again, which files nothing, and claims what is left of those profiles one at a time, and the matcher then
+    // rechecks the whole pod. A pull that files nothing and claims nothing runs no matcher, unless an earlier try of
+    // this bring-in began one that did not finish (`matchOwed`). No hospital's other profile is claimed: the sign-in was
+    // the person's yes for this patient only. A pull the pod held before this connection's import is claimed nothing:
+    // no question tells which import brought a pull's documents (`pod/What each import brought in` names records, not
+    // documents). The pod's page lists what waits (`waiting`).
     void (async () => {
       try {
+        const earlier = connection.profiles;
         const done = await pod.import(files, {
           match: false,
-          onProgress: told,
+          onProgress: (part) =>
+            // The matcher's run is the step after the claims.
+            told(
+              earlier === undefined &&
+                part.part === "judging" &&
+                part.of !== undefined
+                ? { ...part, of: part.of + 1 }
+                : part,
+            ),
+          ...(earlier === undefined && {
+            claimProfiles: (named: readonly string[]) => {
+              connection.profiles = named;
+              if (named.length > 0) connection.matchOwed = true;
+              return named;
+            },
+          }),
         });
         if (done.refused !== undefined) {
           connection.imported = true;
@@ -1400,23 +1417,27 @@ export function podApi(
         }
         const filed = done.wrote.length > 0;
         if (filed) connection.matchOwed = true;
-        connection.profiles = [
-          ...new Set([
-            ...(connection.profiles ?? []),
-            ...done.unclaimedProfiles,
-          ]),
-        ];
-        const profiles = await awaitingAnswer(pod, connection.profiles);
-        if (profiles.length > 0) connection.matchOwed = true;
-        told({ part: "judging", done: 0, of: profiles.length + 1 });
-        for (const [at, profile] of profiles.entries()) {
-          await claim(pod, profile);
-          told({ part: "judging", done: at + 1, of: profiles.length + 1 });
+        let titling: boolean;
+        if (earlier === undefined) {
+          const claimed = done.claimedProfiles.length;
+          if (claimed === 0) told({ part: "judging", done: 0, of: 1 });
+          // A profile's label names no patient, so the title is the bundle's first Patient's: right when one profile was filed
+          // (a two-Patient pull with one of them filed is titled after the first even if the second was filed), and never when two were.
+          titling = claimed === 1 && done.unclaimedProfiles.length === 0;
+        } else {
+          connection.profiles = [
+            ...new Set([...earlier, ...done.unclaimedProfiles]),
+          ];
+          const profiles = await awaitingAnswer(pod, connection.profiles);
+          if (profiles.length > 0) connection.matchOwed = true;
+          told({ part: "judging", done: 0, of: profiles.length + 1 });
+          for (const [at, profile] of profiles.entries()) {
+            await claim(pod, profile);
+            told({ part: "judging", done: at + 1, of: profiles.length + 1 });
+          }
+          titling = profiles.length > 0 && connection.profiles.length === 1;
         }
-        // A profile's label names no patient, so the title is the bundle's first Patient's: right when one profile was filed
-        // (a two-Patient pull with one of them filed is titled after the first even if the second was filed), and never when two were.
-        if (profiles.length > 0 && connection.profiles.length === 1)
-          await titledAfter(name, pod, patientName(pulled!.bundle));
+        if (titling) await titledAfter(name, pod, patientName(pulled!.bundle));
         if (connection.matchOwed === true) {
           await pod.match(filed ? done.activity : undefined);
           connection.matchOwed = false;
