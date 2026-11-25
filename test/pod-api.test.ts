@@ -666,6 +666,10 @@ describe("Reading a pod for its screens · api.pods(), api.pod(), api.answers(),
       assert.equal(waited.adopting, undefined);
       assert.equal(waited.adopted, undefined);
     });
+
+    it("returns no `adopting` for a pod whose open had nothing newer to take in, though it is the pod's first read", () => {
+      assert.equal(read.adopting, undefined);
+    });
   });
 
   describe("given a pod that takes in the app's newer tables after it opens, api.answers({ pod, wait })", () => {
