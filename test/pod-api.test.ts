@@ -12,13 +12,14 @@ import { Hono } from "hono";
 import {
   ConnectionFailure,
   openPod,
+  type Pod,
   pullFiles,
   Refusal,
   sixWords,
   timelineIn,
   Unopened,
 } from "cascade-runtime";
-import { replayKit } from "cascade-runtime/fixtures";
+import { kitDownload, replayKit } from "cascade-runtime/fixtures";
 import { trendOf } from "cascade-runtime/tools";
 import { importClaimingEveryProfile } from "./claiming.js";
 import {
@@ -2637,6 +2638,54 @@ describe("Connecting a pod to a hospital and bringing its records in · api.hosp
       const { failed, logged } = await failedOnce();
       assert.ok(!failed.failed.includes("secret"), failed.failed);
       assert.equal(logged, 1);
+    });
+  });
+
+  describe("given a profile its owner confirms after its import's match", () => {
+    it("matches that profile's records at the next `pod.match()`, as if the owner had confirmed it before the match", async () => {
+      const at = await mkdtemp(join(tmpdir(), "pod-api-confirmed-late-"));
+      folders.push(at);
+      const download = join(
+        await kitDownload("alex-rivera", "x-e10"),
+        "apple_health_export",
+      );
+      const pairs = async (pod: Pod) =>
+        (
+          await pod.ask({
+            query: `PREFIX cascade: <https://ns.cascadeprotocol.org/cascade#> PREFIX prov: <http://www.w3.org/ns/prov#>
+              SELECT DISTINCT ?one ?other WHERE {
+                ?judgment cascade:verdict cascade:Same ; prov:hadMember ?one, ?other . FILTER (STR(?one) < STR(?other))
+              } ORDER BY ?one ?other`,
+          })
+        ).map(({ one, other }) => `${one} ${other}`);
+      const first = await openPod(join(at, "confirmed-first"));
+      await importClaimingEveryProfile(first, download);
+      const wanted = await pairs(first);
+      await first.close();
+      assert.ok(wanted.length > 0);
+      const late = await openPod(join(at, "confirmed-late"));
+      try {
+        const imported = await late.import(download, { match: true });
+        assert.ok(imported.matched);
+        assert.equal(imported.matched.refused, undefined);
+        assert.deepEqual(await pairs(late), []);
+        for (const profile of imported.unclaimedProfiles) {
+          const { refused } =
+            await late.judge(`@prefix cascade: <https://ns.cascadeprotocol.org/cascade#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+<urn:cascade:this-judgment> a cascade:Judgment ;
+    cascade:verdict cascade:About ; cascade:subject <${late.subject}> ; cascade:basis cascade:OwnerStatement ;
+    prov:hadMember <${profile}> ; prov:wasAttributedTo <${late.owner}> ;
+    prov:wasGeneratedBy [ prov:qualifiedAssociation [ prov:agent <${late.owner}> ; prov:hadRole cascade:PatientRole ] ] .
+<${late.owner}> a prov:Person .
+`);
+          assert.equal(refused, undefined);
+        }
+        assert.equal((await late.match()).refused, undefined);
+        assert.deepEqual(await pairs(late), wanted);
+      } finally {
+        await late.close();
+      }
     });
   });
 
