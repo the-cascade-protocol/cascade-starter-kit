@@ -25,7 +25,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v5
         with:
-          node-version: "22"
+          node-version: "24"
           cache: npm
       - run: npm ci
       - uses: ./.github/actions/runtime
@@ -59,7 +59,7 @@ jobs:
     steps:
       - uses: actions/setup-node@v5
         with:
-          node-version: "22"
+          node-version: "24"
       - uses: actions/checkout@v7
         with:
           sparse-checkout: .github/actions
@@ -110,7 +110,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v5
         with:
-          node-version: "22"
+          node-version: "24"
           cache: npm
       - run: npm ci
       - id: runtime
@@ -168,7 +168,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v5
         with:
-          node-version: "22"
+          node-version: "24"
           cache: npm
       - run: npm ci
       - run: npm run build
@@ -245,7 +245,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v5
         with:
-          node-version: "22"
+          node-version: "24"
           cache: npm
       - run: npm ci
       - run: npm run build

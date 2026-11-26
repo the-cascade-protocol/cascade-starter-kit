@@ -86,7 +86,7 @@ merges.
 
 ## Working on it
 
-Node 22.18 or later, which runs the template's `.ts` files as they are.
+Node 24 or later, which runs the template's `.ts` files as they are.
 
 ```sh
 npm ci

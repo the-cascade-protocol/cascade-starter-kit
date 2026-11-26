@@ -10,7 +10,7 @@ Report a security problem privately, by email to contact@cascadeprotocol.org, ne
 
 ## Set up
 
-You need Node.js 22.18 or newer and git.
+You need Node.js 24 or newer and git.
 
 ```sh
 git clone git@github.com:<you>/cascade-starter-kit.git
@@ -51,7 +51,6 @@ CI runs on every pull request. This repository's policy is that a pull request i
 - **`tests`**: the type check, the lint, and the suite. The results are then checked to read as a specification: every
   test sits under a capability heading listed in [`test/spec.json`](test/spec.json), word for word. That check runs in
   CI, not in `npm test`, so a new capability needs its heading added to `spec.json` by hand.
-- **`node-22`**: the suite on Node 22, the oldest Node supported.
 - **`pack`, `made` and `create`**: `pack` packs `create-cascade-app` with the template and its lockfiles. `made` and
   `create` then make an app by the command and use it; [`create.yml`](.github/workflows/create.yml) says which systems
   and add-ons each runs. A made app installs by `npm ci` from the lockfile the command ships, so a template change that

@@ -8,7 +8,7 @@ itself.
 
 It is written in TypeScript, on [React](https://react.dev) with
 [React Router](https://reactrouter.com), built by [Vite](https://vite.dev);
-its server is [Hono](https://hono.dev). Node 22.18 or later runs its `.ts`
+its server is [Hono](https://hono.dev). Node 24 or later runs its `.ts`
 files as they are. It is the starter's base: `create-cascade-app --with chat`
 adds a chat with a model, and `--with mcp` an MCP server, each with its section
 at the end of this file.

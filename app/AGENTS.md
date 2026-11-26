@@ -19,7 +19,7 @@ The app is TypeScript throughout. Its pages are one React app, `index.html`
 and `src/`, routed by React Router and built by Vite (`vite.config.ts`, with
 the plugin of `vite/cascade.ts`); every other file, the server and the
 commands among them, is a `.ts` that Node runs as it is, with no build (Node
-22.18 or later strips its types). `npm run typecheck` checks all of it. The
+24 or later strips its types). `npm run typecheck` checks all of it. The
 app has two targets:
 
 - **On Node,** `npm start` builds it into `dist/` (again whenever a file it is

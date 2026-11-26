@@ -384,9 +384,9 @@ describe("Making an app · create-cascade-app <folder>", () => {
       });
   });
 
-  describe("given a Node.js too old to run `.ts` files", () => {
-    it("returns 2, makes nothing and says which Node.js to get, before 22.18 and, on line 23, before 23.6", async () => {
-      for (const version of ["v22.17.1", "v23.5.0"]) {
+  describe("given a Node.js before and from 24, the app's minimum", () => {
+    it("returns 2, makes nothing and says which Node.js to get, on line 22 and on line 23", async () => {
+      for (const version of ["v22.18.0", "v23.11.0"]) {
         const folder = join(parent, `node-${version}`);
         const terminal = recording();
         assert.equal(
@@ -398,7 +398,7 @@ describe("Making an app · create-cascade-app <folder>", () => {
           terminal
             .text()
             .includes(
-              `This app needs Node.js 22.18 or later; you have ${version}. Get it from https://nodejs.org`,
+              `This app needs Node.js 24 or later; you have ${version}. Get it from https://nodejs.org`,
             ),
           version,
         );
@@ -407,8 +407,8 @@ describe("Making an app · create-cascade-app <folder>", () => {
       }
     });
 
-    it("makes the app on 22.18.0 and on 23.6.0", async () => {
-      for (const version of ["v22.18.0", "v23.6.0"]) {
+    it("makes the app on 24.0.0 and on 25.0.0", async () => {
+      for (const version of ["v24.0.0", "v25.0.0"]) {
         const folder = join(parent, `node-${version}`);
         const terminal = recording();
         assert.equal(
