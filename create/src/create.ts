@@ -210,18 +210,10 @@ function shellWord(word: string): string {
     : `"${word.replaceAll('"', '\\"')}"`;
 }
 
-/**
- * Whether the Node.js of `version` ("v22.18.0") runs a `.ts` file by stripping its types with no flag, as the made app's
- * scripts need: from 22.18.0 on the 22 line, and from 23.6.0 on.
- */
-function runsTypeScript(version: string): boolean {
-  const [major = 0, minor = 0] = version
-    .replace(/^v/, "")
-    .split(".")
-    .map(Number);
-  return (
-    major > 23 || (major === 23 && minor >= 6) || (major === 22 && minor >= 18)
-  );
+/** Whether the Node.js of `version` ("v24.0.0") is one the made app supports: its `engines.node` is `>=24`. */
+function supportsMadeApp(version: string): boolean {
+  const [major = 0] = version.replace(/^v/, "").split(".").map(Number);
+  return major >= 24;
 }
 
 /** The one line that makes an app in the folder from the package at the address. */
@@ -338,9 +330,9 @@ export async function create(
     return 2;
   };
   const node = terminal.node ?? process.version;
-  if (!runsTypeScript(node))
+  if (!supportsMadeApp(node))
     return refuse(
-      `This app needs Node.js 22.18 or later; you have ${node}. Get it from https://nodejs.org`,
+      `This app needs Node.js 24 or later; you have ${node}. Get it from https://nodejs.org`,
     );
   let parsed;
   try {

@@ -10,7 +10,7 @@
     "url": "git+https://github.com/the-cascade-protocol/cascade-starter-kit.git"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=24"
   },
   "files": [
     "add-ons",

@@ -65,22 +65,3 @@ jobs:
           name: unit-tests
           path: unit-tests
           if-no-files-found: error
-
-  # The package declares node >= 22; the job above runs on 24, where node:test names each test's file and line.
-  node-22:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@v5
-        with:
-          node-version: "22"
-          cache: npm
-      - run: npm ci
-      - id: runtime
-        uses: ./.github/actions/runtime
-        with:
-          install: "true"
-      - if: ${{ !cancelled() && steps.runtime.outcome == 'success' }}
-        run: npm test

@@ -6,7 +6,7 @@
   "description": "The app a person starts from on cascade-runtime: the template, try/ in a browser, and create-cascade-app.",
   "license": "Apache-2.0",
   "engines": {
-    "node": ">=22.18.0"
+    "node": ">=24"
   },
   "workspaces": [
     "app",
