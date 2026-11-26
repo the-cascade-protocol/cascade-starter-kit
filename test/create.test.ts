@@ -786,20 +786,23 @@ describe("Installing a new app's packages · package-lock.json, --tarball", () =
       );
     });
 
-    it("copies no lockfile, installs without one, and says why", async () => {
+    it("copies the lockfile, and installs by `npm install` so that only the runtime is resolved afresh", async () => {
       const folder = join(parent, "lock-tarball");
       const terminal = recording();
       assert.equal(
         await create(
-          [folder, "--tarball", ADDRESS],
+          [folder, "--with", "chat", "--tarball", ADDRESS],
           terminal,
           await lockfiles(),
         ),
         0,
       );
-      assert.ok(!existsSync(join(folder, "package-lock.json")));
+      const file = JSON.parse(
+        await readFile(join(folder, "package-lock.json"), "utf8"),
+      ) as { name: string; for: string };
+      assert.deepEqual([file.for, file.name], ["chat", "lock-tarball"]);
       assert.deepEqual(terminal.locked, [false]);
-      assert.match(terminal.text(), /no lockfile.*--tarball/i);
+      assert.match(terminal.text(), /npm install.*runtime/i);
     });
   });
 });

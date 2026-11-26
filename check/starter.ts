@@ -728,8 +728,8 @@ await setUp("the command makes the app", async () => {
   assert.ok(out.includes(agentPrompt("my-app")), "no agent prompt");
   assert.match(
     out,
-    runtime === undefined ? /with npm ci\./ : /No lockfile: --tarball/,
-    "the install did not go by the lockfile the command ships, or did not say why it had none",
+    runtime === undefined ? /with npm ci\./ : /npm install: --tarball/,
+    "the install did not go by the lockfile the command ships, or did not say why it went by npm install",
   );
   assert.deepEqual(await podsOf(), [...KITS].sort());
   const loads = [

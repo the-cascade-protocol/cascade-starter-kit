@@ -66,7 +66,7 @@ export interface Terminal {
   readonly err: (text: string) => void;
   /** Asks the person for the folder's name; absent when no person is at a terminal. */
   readonly ask?: () => Promise<string>;
-  /** Installs the project's dependencies in the folder, resolving whether it succeeded; `locked` when the folder holds a lockfile to install exactly from. */
+  /** Installs the project's dependencies in the folder, resolving whether it succeeded; `locked` to install exactly the lockfile the folder holds (`npm ci`). */
   readonly install: (
     folder: string,
     options: { readonly locked: boolean },
@@ -305,19 +305,15 @@ async function copyStarter(
   );
 }
 
-/**
- * The lockfile `locks` holds for the add-ons, written into the app named `name` as its own; whether the app has one.
- * None is written when the app's runtime is not the pin the lockfiles were made with, or when `locks` has none.
- */
+/** The lockfile `locks` holds for the add-ons, written into the app named `name` as its own; whether the app has one. */
 async function lockApp(
   target: string,
   name: string,
   addOns: readonly string[],
   locks: string,
-  runtime: string | undefined,
 ): Promise<boolean> {
   const path = join(locks, `${lockName(addOns)}.json`);
-  if (runtime !== undefined || !existsSync(path)) return false;
+  if (!existsSync(path)) return false;
   const lock = JSON.parse(await readFile(path, "utf8")) as {
     name?: string;
     packages?: Record<string, { name?: string }>;
@@ -399,7 +395,6 @@ export async function create(
       name,
       chosen.map((each) => each.name),
       locks,
-      parsed.values.tarball,
     );
   } catch (error) {
     terminal.err(
@@ -408,13 +403,13 @@ export async function create(
     );
     return 1;
   }
-  if (locked)
-    terminal.out("Installing what the lockfile names, with npm ci.\n");
+  const exact = locked && parsed.values.tarball === undefined;
+  if (exact) terminal.out("Installing what the lockfile names, with npm ci.\n");
   else if (parsed.values.tarball !== undefined)
     terminal.out(
-      "No lockfile: --tarball names another runtime than the one the lockfiles were made with, so npm install resolves every dependency afresh.\n",
+      `Installing with npm install: --tarball names another runtime than the one the lockfile was made with, so the runtime is resolved afresh${locked ? " and every other package stays as the lockfile names it" : ", and so is every dependency, there being no lockfile"}.\n`,
     );
-  if (!(await terminal.install(target, { locked }))) {
+  if (!(await terminal.install(target, { locked: exact }))) {
     terminal.err(
       `the install failed; ${target} is left as it is: run \`npm install\` in it\n`,
     );
@@ -519,7 +514,7 @@ function npm(folder: string, args: readonly string[]): Promise<boolean> {
   });
 }
 
-/** npm's install in the folder, its output shown: exactly the lockfile's packages (`npm ci`) when it holds one. */
+/** npm's install in the folder, its output shown: exactly the lockfile's packages (`npm ci`) when `locked`. */
 export function npmInstall(
   folder: string,
   { locked }: { readonly locked: boolean },

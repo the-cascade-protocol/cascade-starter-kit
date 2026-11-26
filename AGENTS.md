@@ -83,8 +83,9 @@ https://github.com/the-cascade-protocol/cascade-runtime-js/pull/N`). While that 
   combination of add-ons applied (none, chat, mcp, chat+mcp), into `locks/` of the package; `create` copies the one of
   the add-ons it is given as the app's `package-lock.json`, named for the app, and installs by `npm ci`, so a fresh
   install takes what the lockfile names and fails when it does not match. `--tarball` names another runtime than the
-  lockfiles were made with, so it ships none, says so and installs by `npm install`; a template pin that is no
-  address (a pull request's runtime still being built) packs none. `create.yml` proves the install on ubuntu and
+  lockfiles were made with, so it copies the lockfile all the same, says so and installs by `npm install`, which
+  resolves the runtime afresh and keeps every other package as locked, so a new release of a dependency cannot break
+  it; a template pin that is no address (a pull request's runtime still being built) packs none. `create.yml` proves the install on ubuntu and
   windows for every combination.
 - **No runtime dependency.** It loads a made app's tables and kits through
   that app's own `cascade-runtime/fixtures`, resolved from the app's folder
