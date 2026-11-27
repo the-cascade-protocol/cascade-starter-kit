@@ -3,7 +3,7 @@ import type { Exported, Imported, Pod } from "cascade-runtime";
 /**
  * An import after which the person said yes to every patient it names: the records are filed, the owner files an About
  * for each patient left unclaimed, and the matcher runs on the import. Self-contained, so a page runs it from its source:
- * it cannot import the About the app writes in `app/pod-api.ts`, which a page and a made app do not hold as a module.
+ * it cannot import the About PodApi writes (`podApi` of `cascade-runtime/app`), which a page running it from its source cannot name.
  */
 export async function importClaimingEveryProfile(
   pod: Pod,

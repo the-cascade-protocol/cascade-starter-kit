@@ -1,5 +1,5 @@
 // The Node target's host: PodApi at the server's `/api/`, beside the app, and the chat at its `/chat` when the chat
-// add-on is here. The bundle carries the typed client only: no server code and no runtime.
+// add-on is here. The page runs no PodApi: it calls the server's through `remoteApi`, and holds no server code.
 import { Refusal } from "cascade-runtime";
 import { idleCounted, type Person, remoteApi } from "cascade-runtime/app";
 import { lazy } from "react";
@@ -20,7 +20,7 @@ async function model(): Promise<ChatModel | undefined> {
   return typeof named.name === "string" ? (named as ChatModel) : undefined;
 }
 
-/** The reads of the one list, which the server runs at `/tools`: the bundle carries no runtime to run them. */
+/** The reads of the one list, which the server runs at `/tools`: the page runs no PodApi to run them. */
 const reads: Host["reads"] = {
   async list() {
     const response = await fetch(new URL("tools", BASE));

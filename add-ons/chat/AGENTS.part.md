@@ -19,7 +19,7 @@ server's turn and the page runs it. `POST /chat` takes the SDK's `messages` besi
 with the SDK's UI message stream, stops after `MAX_ROUNDS` rounds of tool calls, and says the model's refusal as a
 `data-refused` part; `GET /chat` gives the model's `{ provider, name, local }`, or `{}`. The chat window, on the Node
 target only, is `src/chat/`: assistant-ui's components over the SDK's `useChat` at `/chat`. It runs the page's tools,
-`PAGE_TOOLS` of `said.ts` (which `tools.ts` lists too), over the host's PodApi: a navigation moves the app in place
+`PAGE_TOOLS` of `cascade-runtime/app` (which its `TOOLS` lists too), over the host's PodApi: a navigation moves the app in place
 with the chat open, and a write waits on the page's own ask, `useConfirm()` of `src/confirm.tsx` (Allow, or Cancel,
 which tells the model "The person said no"). It keeps the chats in `localStorage`, each under the pod it is about, and
 none of an encrypted pod's (`src/chat/chats.ts`). The screens draw "Ask about this" (`src/ask.tsx`) once `GET /chat`

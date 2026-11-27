@@ -1,6 +1,6 @@
 // The MCP server over the app's pods: what `mcp.ts` serves on stdio. A client such as Claude Desktop or VS Code lists
 // the pods, asks the curated questions and runs the analytics of `cascade-runtime` (`changeTools`). It offers the free
-// reads of `tools.ts`: an MCP client never moves the app, and never writes.
+// reads of `TOOLS` of `cascade-runtime/app`: an MCP client never moves the app, and never writes.
 import console from "node:console";
 import { readFile } from "node:fs/promises";
 import { URL } from "node:url";

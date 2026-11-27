@@ -2,9 +2,9 @@
 
 An app on a Cascade pod: a React app that shows what a pod holds, served on
 Node over the pods in `pods/` or built to run in a browser alone, and commands
-to load, make, remove and ask pods. It depends only on
-`cascade-runtime`, which keeps the pods; this app never writes a pod's files
-itself.
+to load, make, remove and ask pods. The screens are yours to change;
+`cascade-runtime/app` is a library you depend on, and `cascade-runtime` keeps the
+pods: this app never writes a pod's files itself.
 
 It is written in TypeScript, on [React](https://react.dev) with
 [React Router](https://reactrouter.com), built by [Vite](https://vite.dev);
@@ -118,7 +118,7 @@ dates in short included.
 
 ## The tools a model reaches
 
-`tools.ts` is the one list of tools a model reaches the app by, the browser
+`TOOLS` of `cascade-runtime/app` is the one list of tools a model reaches the app by, the browser
 target's WebMCP, and the chat and an MCP client when they are added, alike.
 Each calls the app's PodApi only, takes one kind of act, and has the consent tier
 the protocol gives that kind:
@@ -147,7 +147,7 @@ script goes after `--`, or npm keeps it for itself.
   are older than their sources.
 - `npm run reset` removes every pod and loads Alex's, Priya's, Martin's and Tamsin's again, as
   the File menu's "Reset all data" does: both load the kits through
-  `restoreKits` in `pods.ts`.
+  `restoreKits` of `cascade-runtime/app`.
 - `npm run pod:new <name>` makes an empty pod.
 - `npm run pod:load -- <kit> [--through <step>] [--as <name>]` replays a kit's
   story into `pods/<name>/`. One app can hold a kit at two points:
@@ -160,8 +160,8 @@ script goes after `--`, or npm keeps it for itself.
 - `ask` and `console` need `--pod <name>` whenever the app has more than one
   pod, as a made app does; it may be left out only when there is exactly one.
 - `npm run typecheck` checks the TypeScript of every file of the app.
-- `npm test` runs the app's own tests (`test/`, on [Vitest](https://vitest.dev)): PodApi behind the server, in the
-  process, and the tool list's tiers. They take seconds, and they are short so you can copy one for your own change.
+- `npm test` runs the app's own tests (`test/`, on [Vitest](https://vitest.dev)); the app ships none, since PodApi,
+  the server's handler and the tool list are tested in cascade-runtime. A test you add runs in seconds.
 - `npm run test:e2e` runs one browser test (`e2e/`, on [Playwright](https://playwright.dev)): it starts the app, opens
   Alex Rivera's pod and checks its first tiles draw. Install the browser it uses once, with
   `npx playwright install chromium`; `npm install` does not download it.
@@ -172,7 +172,7 @@ Every file of the app is TypeScript: `.tsx` for the pages, `.ts` for the rest,
 which Node runs as it is.
 
 - `index.html`, `src/`: the app, in React, routed by React Router in data
-  mode and built by Vite (`vite.config.ts`, with `vite/cascade.ts`, which adds
+  mode and built by Vite (`vite.config.ts`, with `cascadeRuntime` of `cascade-runtime/vite`, which adds
   what each target carries beside its bundle). `src/App.tsx` holds the routes,
   and each screen has its file: `pod.tsx`, `entry.tsx`, `trend.tsx`,
   `classes.tsx`, `panel.tsx`, `tables.tsx`, `hospitals.tsx`, `newpod.tsx`;
@@ -181,43 +181,26 @@ which Node runs as it is.
   reads in its route's loader and writes in its route's action (a form that
   posts a step, `src/actions.tsx`), through PodApi from the host the build
   chose: on Node `src/hosts/http.ts`, which calls the server's `/api/` through
-  Hono's typed client, and in a browser `src/hosts/browser.ts`, which runs
-  `pod-api.ts` in the page. A step the rules refuse is drawn as "Not done", with
+  `remoteApi` of `cascade-runtime/app`, and in a browser `src/hosts/browser.ts`, which runs
+  `podApi` of it in the page. A step the rules refuse is drawn as "Not done", with
   why. The page's state is on its body, `data-state`: `opening`, `busy` while
   the router reads or a step runs, `ready` once what it read is drawn, and
   `error`, with `data-error` saying why. Under the pods, the sidebar lists
   the reference tables the pods are matched with; `/tables/<id>/` shows one
   with a search, and Check now reads their feeds again.
-- `said.ts`: what the pages say, as plain functions whose one import is the runtime's terms (its types aside, which are erased), from a
-  pod's answers to sentences, rows and tags; `addresses.ts`, every address of
-  the app.
+- `said.ts`: what the pages say that is the app's own: its tiles, the chart's geometry and the words of its menus
+  and forms. The rest of what they say, from a pod's answers to sentences, rows and tags, is `cascade-runtime/app`'s.
+  `addresses.ts` is every address of the app.
 - `server/`: `npm start`'s server, on [Hono](https://hono.dev): `main.ts`
-  starts it, `app.ts` answers, `api.ts` serves every operation of
-  `pod-api.ts` as `POST /api/<operation>`, JSON in and out, with each input
-  checked by `inputs.ts`, `tools.ts` runs the tool list's reads for the
-  page, and `guard.ts` refuses another site's requests. `browser.ts` is
-  `npm run browser`, and `samples.ts` what its samples carry for a first
+  starts it, `app.ts` mounts `appHandler` of `cascade-runtime/app`, which serves every operation of
+  PodApi as `POST /api/<operation>`, JSON in and out, the tool list's reads for the page, and
+  refuses another site's requests, and gives it the pages. `demo-hospitals.ts` gives PodApi the demo hospitals the
+  server answers. `browser.ts` is `npm run browser`, and `samples.ts` what its samples carry for a first
   visit.
-- `pod-api.ts`: `podApi(host)`, every read and write the app makes of its
-  pods and its reference tables, plain JSON in and out, refusing bad input
-  with a `Refusal`; each operation's input is its route's schema and its
-  output what it gives (`PodApi`, `Output`). The server, `npm run ask` and
-  every add-on call it, and the browser target loads the same
-  file: it imports only `cascade-runtime` and `said.ts`.
-- `node-host.ts`: the host `podApi` reads on Node: the pods are folders in
-  `pods/`, with the reference tables beside them; `opensEncrypted: false`
-  refuses an encrypted pod, as `npm run ask` does. Also the
-  hospitals and the world's date the server gives it.
-- `hospitals.ts`: the sign-in at a hospital, which waits for the redirect
-  back to `/callback`, and the world's date the demo hospitals answer as of.
 - `demo-hospital/`: the pretend hospitals, a package of this app's own.
-- `pods.ts`: what the commands and the server share: where pods live and what
-  they are called, which one a command works on, deleting them and loading the
+- `pods.ts`: what the commands share: where pods live, which one a command works on, deleting them and loading the
   kits again, and the addresses of a pod's page and its trend.
 - `pod.ts`, `kit.ts`, `ask.ts`, `console.ts`, `patient.ts`: the commands, and
   `help.ts`, which lists them with what `help.json` says of each.
-- `tools.ts`: the one list of tools a model reaches, with their tiers and
-  what no tool calls, which every door shares. Each calls the operations of
-  `pod-api.ts`.
 - `AGENTS.md`: for a coding agent building on this app. The full guide to
   `cascade-runtime` is in `node_modules/cascade-runtime/guide/AGENTS.md`.
