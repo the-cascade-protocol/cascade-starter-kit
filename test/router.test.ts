@@ -38,9 +38,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { routes } from "./App.tsx";
 import { HostProvider } from "./api.tsx";
-import { watch } from "./doing.ts";
-export { isBusy, ready, sayingNow } from "./doing.ts";
-import { warm as warmEngine } from "./engine.ts";
+import { warmEngine, watchRouter } from "cascade-runtime/app";
+export { isPageBusy as isBusy, pageReady as ready, sayingNow } from "cascade-runtime/app";
 
 export const idle = (router) =>
   new Promise((resolve) => {
@@ -94,7 +93,7 @@ export async function draw(api, at, posted, then) {
 export async function watched(given, at) {
   const host = hostOf(given);
   const router = createMemoryRouter(routes(host), { initialEntries: [at] });
-  watch(router);
+  watchRouter(router);
   await idle(router);
   return router;
 }

@@ -1,17 +1,21 @@
-// The Node target's server: the guard, PodApi at `/api/`, the reads of the tool list at `/tools`, the chat at `/chat`
-// when the app has it, a hospital's redirect back at `/callback`, and the built app: its files as they are, and its
-// page for any other address a person opens.
+// The Node target's server: `appHandler` of `cascade-runtime/app` answers the guard, PodApi at `/api/`, the tools at
+// `/tools`, the chat at `/chat` when the app has it, a hospital's redirect back at `/callback` and the demo people; this
+// file hands it the pages: the built app's files as they are and its page for any other address a person opens, or in
+// development Vite's.
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { HttpBindings } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
-import { Hono, type MiddlewareHandler } from "hono";
-import { getCookie, setCookie } from "hono/cookie";
+import {
+  appHandler,
+  type Launch,
+  type Operations,
+  type Own,
+} from "cascade-runtime/app";
+import { Hono } from "hono";
 import { addresses } from "../addresses.ts";
-import { apiRoutes, type Operations } from "./api.ts";
-import { guard, type Own } from "./guard.ts";
-import { type Launch, launchCookie } from "./launch.ts";
-import { toolRoutes } from "./tools.ts";
+
+type Bound = { Bindings: HttpBindings };
 
 export interface Served {
   readonly api: Operations;
@@ -25,82 +29,14 @@ export interface Served {
   back(url: URL): { pod: string; connection: number } | undefined;
   /** The demo people the hospitals hold, as `demoPeople` gives them, at `/demo-people.json`; none when not given. */
   people?(): readonly object[];
-  /** The built app's folder, or in development what serves its pages. */
-  readonly pages: string | MiddlewareHandler<{ Bindings: HttpBindings }>;
+  /** The built app's folder, or in development what answers a request with Vite's pages, given the request's bindings. */
+  readonly pages: string | ((bindings: HttpBindings) => Promise<Response>);
 }
 
 const ADDRESS = addresses();
 
-/** Where `/world-date?back=` goes: `back` when it is a path of this app, with the world's date's form open; else home. */
-export function worldDateBack(back: string | undefined): string {
-  if (back === undefined || !back.startsWith("/") || back.startsWith("//"))
-    return ADDRESS.home;
-  if (/[\\\s]/.test(back)) return ADDRESS.home;
-  const url = new URL(back, "http://app.invalid");
-  return url.origin === "http://app.invalid" && !url.pathname.startsWith("//")
-    ? `${url.pathname}${url.search}#world-date`
-    : ADDRESS.home;
-}
-/** What the server answers itself, served or not, and never as the app's page: the routes that read a pod. */
+/** What the handler answers itself, served or not, and never as the app's page: the routes that read a pod. */
 const SERVED = /^\/(?:api\/|tools(?:\/|$)|chat$)/;
-
-const NO_COOKIE =
-  "this request does not come from the page the app opened: open the address `npm start` printed";
-
-const spentPage = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Address used · Cascade</title></head><body><h1>This address was opened already</h1><p>Start the app again. It prints a new address.</p></body></html>`;
-
-/** Refuses a request to a route that reads a pod unless it holds the cookie the launch's address gave the page. */
-const launched =
-  (launch: Launch): MiddlewareHandler =>
-  async (c, next) => {
-    if (!SERVED.test(c.req.path)) return next();
-    const cookie = getCookie(c, launchCookie(new URL(c.req.url)));
-    return launch.holds(cookie) ? next() : c.json({ refused: NO_COOKIE }, 403);
-  };
-
-const openPrinted = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Open the printed address · Cascade</title></head><body><h1>Open the address the app printed</h1><p>This page holds no launch cookie. The address the app printed when it started carries the one-time token that gives it.</p></body></html>`;
-
-/**
- * Development's pages (Vite's middleware, which serves any file under the app) only to a request that holds the launch
- * cookie. A navigation without it is told to open the printed address; any other request is refused in JSON.
- */
-const launchedPages =
-  (launch: Launch, pages: MiddlewareHandler): MiddlewareHandler =>
-  async (c, next) => {
-    if (launch.holds(getCookie(c, launchCookie(new URL(c.req.url)))))
-      return pages(c, next);
-    const navigating =
-      c.req.header("sec-fetch-mode") === "navigate" ||
-      (c.req.header("accept") ?? "").includes("text/html");
-    return navigating
-      ? c.html(openPrinted, 403)
-      : c.json({ refused: NO_COOKIE }, 403);
-  };
-
-/**
- * `GET /?launch=<token>`: the token of the address the server printed, once, for the cookie that opens the pod's routes,
- * then the same address without it. A page that holds the cookie already is sent on as well.
- */
-const traded =
-  (launch: Launch): MiddlewareHandler =>
-  async (c, next) => {
-    const url = new URL(c.req.url);
-    const token = url.searchParams.get("launch");
-    if (token === null) return next();
-    const name = launchCookie(url);
-    url.searchParams.delete("launch");
-    const on = `${url.pathname}${url.search}`;
-    c.header("cache-control", "no-store");
-    if (launch.holds(getCookie(c, name))) return c.redirect(on, 303);
-    const session = launch.exchange(token);
-    if (session === undefined) return c.html(spentPage, 403);
-    setCookie(c, name, session, {
-      httpOnly: true,
-      sameSite: "Strict",
-      path: "/",
-    });
-    return c.redirect(on, 303);
-  };
 
 /**
  * An address a person opens rather than a file a page reads. An id may hold a dot, so a last part with one is a page
@@ -113,10 +49,7 @@ const isPage = (path: string, headers: Headers) =>
     (headers.get("accept") ?? "").includes("text/html"));
 
 /** `app` serving the built app in `folder`: its files as they are, and its `index.html` for any page a person opens. */
-export function withPages<T extends Hono<{ Bindings: HttpBindings }>>(
-  app: T,
-  folder: string,
-): T {
+export function withPages<T extends Hono<Bound>>(app: T, folder: string): T {
   let page: Promise<string> | undefined;
   app.get("*", serveStatic({ root: folder }), async (c, next) => {
     if (!isPage(c.req.path, c.req.raw.headers)) return next();
@@ -126,35 +59,32 @@ export function withPages<T extends Hono<{ Bindings: HttpBindings }>>(
   return app;
 }
 
-const notWaiting = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Not waiting · Cascade</title></head><body><h1>No sign-in is waiting for this</h1></body></html>`;
-
 /** What the chat add-on's `server/chat.ts` gives the server: its routes over `api`, with the model the app was set up with. */
 export type ChatServed = (api: Operations) => Hono;
 
 export function appServer(served: Served) {
-  const app = new Hono<{ Bindings: HttpBindings }>()
-    .use(guard(served.own))
-    .use(launched(served.launch))
-    .get("/", traded(served.launch))
-    .route("/", apiRoutes(served.api))
-    .route("/", toolRoutes(served.api))
-    .route("/", served.chat ?? new Hono())
-    .get("/callback", (c) => {
-      const at = served.back(new URL(c.req.url));
-      return at === undefined
-        ? c.html(notWaiting, 400)
-        : c.redirect(ADDRESS.connection(at.pod, at.connection), 303);
-    })
-    .get("/world-date", (c) => c.redirect(worldDateBack(c.req.query("back"))))
-    .get("/demo-people.json", (c) => c.json(served.people?.() ?? []));
-  const { pages } = served;
-  if (typeof pages !== "string")
-    app.get("*", launchedPages(served.launch, pages));
-  else withPages(app, pages);
-  app.notFound((c) =>
-    c.req.path.startsWith("/api/")
-      ? c.json({ refused: "no such operation" }, 404)
-      : c.text("Not found", 404),
-  );
-  return app;
+  const { chat, pages } = served;
+  const built =
+    typeof pages === "string"
+      ? withPages(new Hono<Bound>(), pages).notFound((c) =>
+          c.text("Not found", 404),
+        )
+      : undefined;
+  const pagesOf = (bindings: HttpBindings) =>
+    typeof pages === "string"
+      ? (request: Request) => built!.fetch(request)
+      : () => pages(bindings);
+  const handle = appHandler({
+    api: served.api,
+    own: served.own,
+    launch: served.launch,
+    address: ADDRESS,
+    back: served.back,
+    ...(served.people === undefined ? {} : { people: served.people }),
+    ...(chat === undefined
+      ? {}
+      : { chat: (request: Request) => chat.fetch(request) }),
+    pagesNeedLaunch: typeof pages !== "string",
+  });
+  return new Hono<Bound>().all("*", (c) => handle(c.req.raw, pagesOf(c.env)));
 }

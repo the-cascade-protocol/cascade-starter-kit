@@ -12,14 +12,15 @@ import {
 } from "react-router";
 import {
   checkedNote,
-  didNote,
   PAGE_TOOLS,
-  refusal,
-  type ToolInput,
-} from "../said.ts";
+  pageSettled,
+  type PageToolInput,
+  Refusal,
+  type ToolSteps,
+} from "cascade-runtime/app";
+import { didNote } from "../said.ts";
 import { ADDRESS, ROUTED, routed } from "./address.tsx";
 import type { Host } from "./api.tsx";
-import { settled } from "./doing.ts";
 import { leaveNote, type Did } from "./screen.tsx";
 
 /** What a step's action says where it stays on its screen: also the six words' or the unlock's own outcome. */
@@ -178,9 +179,9 @@ export function steps(host: Host) {
       const tool = PAGE_TOOLS.find(({ name }) => name === field("tool"));
       let to: string | undefined;
       try {
-        if (tool === undefined) throw refusal(`No tool ${field("tool")}`);
+        if (tool === undefined) throw new Refusal(`No tool ${field("tool")}`);
         call?.resolve(
-          await tool.run(api, JSON.parse(field("input")) as ToolInput, {
+          await tool.run(api, JSON.parse(field("input")) as PageToolInput, {
             address: ADDRESS,
             async open(address) {
               to = routed(new URL(address, location.href));
@@ -211,13 +212,6 @@ export function steps(host: Host) {
 }
 
 /** How a model's tools move the app and write: through the router, each settling once the page has drawn it. */
-export interface ToolSteps {
-  /** Runs the page's tool `name`, a write, as a step of the screen shown; what it gave, or its refusal thrown. */
-  write(name: string, input: ToolInput): Promise<unknown>;
-  /** Moves the app to the router path `to`, as a step: settles once the screen there is drawn. */
-  move(to: string): Promise<void>;
-}
-
 export function useToolSteps(): ToolSteps {
   const fetcher = useFetcher();
   const navigate = useNavigate();
@@ -245,12 +239,12 @@ export function useToolSteps(): ToolSteps {
           { method: "post", action: latest.current.here },
         );
         if (calls.delete(call))
-          throw refusal("The page is busy with something else; try again");
+          throw new Refusal("The page is busy with something else; try again");
         return answer;
       },
       async move(to) {
         await latest.current.navigate(to, { state: { step: true } });
-        await settled();
+        await pageSettled();
       },
     }),
     [],

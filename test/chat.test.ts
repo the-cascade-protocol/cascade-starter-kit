@@ -19,6 +19,7 @@ import {
 } from "cascade-runtime";
 import { withPod } from "cascade-runtime/tools";
 import { importClaimingEveryProfile } from "./claiming.js";
+import { appPodApi } from "./fixtures.js";
 import { pulled } from "./hospitals.js";
 
 type Chunk = { type: string; [key: string]: unknown };
@@ -65,32 +66,22 @@ type Api = {
   tool(input: object): Promise<{ found: { key: string }[] }>;
   close(): Promise<void>;
 };
-const { maps, podApi } = (await import(
-  new URL("../../build/app/pod-api.ts", import.meta.url).href
-)) as {
-  maps: (output: object) => { about: Map<string, unknown> };
-  podApi: (host: object) => Api;
-};
 type Schema = { properties?: Record<string, unknown> };
-const { NEVER, TOOLS } = (await import(
-  new URL("../../build/app/tools.ts", import.meta.url).href
-)) as {
-  NEVER: { op: string; with?: string }[];
-  TOOLS: {
-    name: string;
-    tier: string;
-    ofPod?: true;
-    opens?: true;
-    inputSchema: Schema;
-  }[];
-};
-const { changeSaid, entryId, HISTORY } = (await import(
-  new URL("../../build/app/said.ts", import.meta.url).href
-)) as {
-  changeSaid: (finding: unknown, about: Map<string, unknown>) => string;
-  entryId: (entry: string) => string;
-  HISTORY: string;
-};
+const { changeSaid, entryId, HISTORY, maps, NEVER, TOOLS } =
+  (await import("cascade-runtime/app")) as unknown as {
+    changeSaid: (finding: unknown, about: Map<string, unknown>) => string;
+    entryId: (entry: string) => string;
+    HISTORY: string;
+    maps: (output: object) => { about: Map<string, unknown> };
+    NEVER: { op: string; with?: string }[];
+    TOOLS: {
+      name: string;
+      tier: string;
+      ofPod?: true;
+      opens?: true;
+      inputSchema: Schema;
+    }[];
+  };
 
 const STATIN = "story-statin";
 /** What the tables call atorvastatin, which no record of the pod calls it. */
@@ -118,7 +109,7 @@ function apiOverStatin(): Promise<Api> {
     const atorvastatin = timelineIn(await statin.ask(HISTORY)).find(
       ({ notation }) => notation === "617310",
     )!.code;
-    return podApi({
+    return appPodApi<Api>({
       pods: {
         names: async () => [...pods.keys()],
         title: async () => undefined,

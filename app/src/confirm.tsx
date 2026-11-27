@@ -1,6 +1,7 @@
 // The page's own ask before a write a model asked for: a box naming the action and its input, with Allow and Cancel,
 // one at a time. Whoever offers a model a write (the chat, a browser agent's tools) awaits `confirm` and writes only on
 // a yes.
+import type { Asking, Confirm } from "cascade-runtime/app";
 import { dialogBox, factName, facts, factValue, quiet, row } from "./look.ts";
 import {
   createContext,
@@ -12,21 +13,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-
-/** What a model asks to do: the action in words, and the input it gave. */
-export interface Asking {
-  readonly action: string;
-  readonly input: Readonly<Record<string, unknown>>;
-}
-
-/**
- * Shows the person `asking` and resolves true on Allow, false on Cancel; asks made meanwhile wait their turn. An ask
- * whose `signal` aborts is withdrawn, from the box or from the queue, and resolves false.
- */
-export type Confirm = (
-  asking: Asking,
-  signal?: AbortSignal,
-) => Promise<boolean>;
 
 /** What the person is asked to allow, for each write a page tool makes. */
 export const ACTIONS: Readonly<Record<string, string>> = {

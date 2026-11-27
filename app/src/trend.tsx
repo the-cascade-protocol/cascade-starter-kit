@@ -1,17 +1,16 @@
 // The trend of one test, a medication marked: a chart of the results with the days the medication was prescribed,
 // started and stopped dashed across it, each medication as a bar under it, a table of the results and links to pick another test or
 // medication. It states what changed after what, never why.
-import type { LoaderFunctionArgs } from "react-router";
 import {
+  engineWarming,
+  whenNamed,
   type Abouts,
   type Coded,
   day,
   dayAtInWords,
-  LARGE,
   type Left,
   leftSaid,
   maps,
-  plotOf,
   type Row,
   resultsSaid,
   rounded,
@@ -19,16 +18,16 @@ import {
   therapiesOf,
   therapyDays,
   therapySpan,
-  timeOf,
   type Timed,
   trendTitle,
   unitOf,
-} from "../said.ts";
+} from "cascade-runtime/app";
+import type { LoaderFunctionArgs } from "react-router";
+import { LARGE, plotOf, timeOf } from "../said.ts";
 import { useAddress } from "./address.tsx";
 import type { PodApi } from "./api.tsx";
 import { AskButton } from "./ask.tsx";
 import { Chart, Lane } from "./chart.tsx";
-import { warming, whenNamed } from "./engine.ts";
 import {
   card,
   lead,
@@ -266,7 +265,7 @@ export const trendLoader = (api: PodApi) =>
           named,
         }),
       ) as unknown as TrendRead;
-    const later = warming();
+    const later = engineWarming();
     const read = await trend(!later);
     return {
       value: {

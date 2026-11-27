@@ -1,5 +1,13 @@
 // What every screen shares: the loader that reads it and says what the rules refused, the note a step left above it,
 // the screen drawn from what its loader read or from what its action said, and the parts still to come.
+import {
+  pageFailed,
+  pageReady,
+  personName,
+  type Person,
+  type Series,
+  type Source,
+} from "cascade-runtime/app";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   useActionData,
@@ -8,10 +16,8 @@ import {
   useRouteLoaderData,
   type LoaderFunctionArgs,
 } from "react-router";
-import { personName, type Person, type Series, type Source } from "../said.ts";
 import { BASE, useAddress } from "./address.tsx";
 import type { PodListed } from "./api.tsx";
-import { failed, ready } from "./doing.ts";
 import { note as noteLook } from "./look.ts";
 import { Unlock } from "./newpod.tsx";
 import { closeBox } from "./parts.tsx";
@@ -126,7 +132,7 @@ export function useLate<T>(value: T | Promise<T>): T | undefined {
       (settled) => live && setCame({ from: value, value: settled }),
       (error: unknown) =>
         live &&
-        failed(
+        pageFailed(
           `a part of the screen could not be read: ${error instanceof Error ? error.message : String(error)}`,
         ),
     );
@@ -171,7 +177,7 @@ export function Screen({ children }: { children: ReactNode }) {
   }, [did]);
   useEffect(() => {
     if (did?.leave === undefined) return;
-    ready();
+    pageReady();
     location.assign(did.leave);
   }, [did]);
   return (

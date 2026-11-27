@@ -8,6 +8,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/server";
 import { loadHospital, loadStories } from "@the-cascade-protocol/sandbox/node";
 import { openPod, type Pod, pullFiles, Refusal } from "cascade-runtime";
 import { importClaimingEveryProfile } from "./claiming.js";
+import { appPodApi } from "./fixtures.js";
 import { pulled } from "./hospitals.js";
 import { removed } from "./settled.js";
 
@@ -23,12 +24,7 @@ const { podServer, QUESTIONS, WARNING } = (await import(
   QUESTIONS: string[];
   WARNING: string;
 };
-const { podApi } = (await import(
-  new URL("../../build/app/pod-api.ts", import.meta.url).href
-)) as { podApi: (host: object) => Api };
-const { nodeHost } = (await import(
-  new URL("../../build/app/node-host.ts", import.meta.url).href
-)) as {
+const { nodeHost } = (await import("cascade-runtime/app")) as unknown as {
   nodeHost: (options: { folder: string; opensEncrypted: boolean }) => object;
 };
 const { trendUrl } = (await import(
@@ -48,9 +44,10 @@ interface Tool {
     },
   ): Promise<unknown>;
 }
-const { NEVER, TOOLS } = (await import(
-  new URL("../../build/app/tools.ts", import.meta.url).href
-)) as { NEVER: { op: string; with?: string }[]; TOOLS: Tool[] };
+const { NEVER, TOOLS } = (await import("cascade-runtime/app")) as unknown as {
+  NEVER: { op: string; with?: string }[];
+  TOOLS: Tool[];
+};
 
 const STATIN = "story-statin";
 
@@ -220,7 +217,7 @@ describe("Serving the pods to an MCP client · npm run mcp, podServer()", () => 
     assert.equal(imported.refused, undefined);
     pods.set(STATIN, statin);
 
-    api = podApi({
+    api = appPodApi<Api>({
       pods: {
         names: async () => [...pods.keys()],
         title: async () => undefined,
@@ -348,7 +345,7 @@ describe("Serving the pods to an MCP client · npm run mcp, podServer()", () => 
   describe("given a pod that fails to open for a reason that is no refusal", () => {
     it("returns a fixed message as the tool error, never the error's own, and logs the error once", async (t) => {
       const logged = t.mock.method(console, "error", () => {});
-      const broken = podApi({
+      const broken = appPodApi<Api>({
         pods: {
           names: async () => ["broken"],
           title: async () => undefined,
@@ -383,7 +380,7 @@ describe("Serving the pods to an MCP client · npm run mcp, podServer()", () => 
     before(async () => {
       folder = await mkdtemp(join(tmpdir(), "t351-mcp-"));
       await (await openPod(join(folder, "sealed"), { secret: words })).close();
-      elsewhere = podApi(nodeHost({ folder, opensEncrypted: false }));
+      elsewhere = appPodApi<Api>(nodeHost({ folder, opensEncrypted: false }));
       sealed = await clientOf(elsewhere);
     });
 

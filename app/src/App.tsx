@@ -1,6 +1,7 @@
 // The app: its routes, each screen's loader and the one action every route has, and the shell around the screen the
 // address names. The root route reads the pods there are and the reference tables held, the tables once the engine,
 // warmed in the background after the first screen is drawn, can say.
+import { engineWarming, whenNamed, type Person } from "cascade-runtime/app";
 import {
   Suspense,
   useEffect,
@@ -19,7 +20,6 @@ import {
   type RouteObject,
   type ShouldRevalidateFunction,
 } from "react-router";
-import type { Person } from "../said.ts";
 import { steps, type Stayed } from "./actions.tsx";
 import { ROUTED, useInPlace } from "./address.tsx";
 import { useHost, type ChatModel, type Host } from "./api.tsx";
@@ -27,7 +27,6 @@ import { AskProvider } from "./ask.tsx";
 import { ClassesScreen, classesLoader } from "./classes.tsx";
 import { ConfirmProvider } from "./confirm.tsx";
 import { PageState } from "./doing.ts";
-import { warming, whenNamed } from "./engine.ts";
 import { EntryScreen, entryLoader } from "./entry.tsx";
 import { HospitalsScreen, hospitalsLoader } from "./hospitals.tsx";
 import { button, lead } from "./look.ts";
@@ -161,7 +160,7 @@ export function routes(host: Host): RouteObject[] {
           { held: [], read: "failed" },
           "the reference tables",
         );
-        return { pods, people, held: warming() ? tables : await tables };
+        return { pods, people, held: engineWarming() ? tables : await tables };
       },
       shouldRevalidate: reread,
       element: <Shell />,

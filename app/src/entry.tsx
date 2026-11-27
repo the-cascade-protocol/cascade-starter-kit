@@ -1,16 +1,17 @@
 // An entry's page, as a person reads it: its name and tags, what it is, where it came from and what else is known, each
 // part absent when it has nothing to say but where it came from. It is drawn from the pod's answers first; once the
 // engine is ready the tables add the codes' names, the LOINC panels a lab result is in and the versions that joined it.
-import { Fragment } from "react";
-import type { LoaderFunctionArgs } from "react-router";
 import {
+  engineWarming,
+  whenNamed,
+  pageFailed,
   capitalised,
   dayOrAsWritten,
   entryId,
   entryOf,
   maps,
   onDaySaid,
-  panelsOf,
+  type PodApi as Operations,
   REQUIRED,
   sourcesOf,
   stepWhenSaid,
@@ -21,12 +22,13 @@ import {
   type Series,
   type VariantsSaid,
   versionName,
-} from "../said.ts";
+} from "cascade-runtime/app";
+import { Fragment } from "react";
+import { SECTIONS } from "../said.ts";
+import type { LoaderFunctionArgs } from "react-router";
 import { useAddress } from "./address.tsx";
 import type { PodApi } from "./api.tsx";
 import { AskButton } from "./ask.tsx";
-import { failed } from "./doing.ts";
-import { warming, whenNamed } from "./engine.ts";
 import {
   bullet,
   bullets,
@@ -48,7 +50,11 @@ import {
   useRead,
 } from "./screen.tsx";
 
-type Panels = Awaited<ReturnType<typeof panelsOf>>;
+/** The LOINC panels a lab result is in, as PodApi's `said` gives them for an entry. */
+type Panels = Extract<
+  Awaited<ReturnType<Operations["said"]>>,
+  { readonly panels: unknown }
+>["panels"];
 
 /** What an entry's page is drawn from: the entry, if the pod holds it, and the panels its test is in. */
 interface EntryRead {
@@ -267,7 +273,7 @@ async function namedEntry(
     said?: VariantsSaid;
     held?: readonly Series[];
   };
-  return entryOf(answers, id, { about, said, held }) ?? own;
+  return entryOf(answers, id, { about, said, held, sections: SECTIONS }) ?? own;
 }
 
 /**
@@ -288,7 +294,7 @@ async function fullEntry(
     return { entry: full.entry ?? named, panels: full.panels ?? [] };
   } catch (error) {
     if (!(error instanceof Error && error.name === "Refusal"))
-      failed(
+      pageFailed(
         `the entry's tables could not be read: ${error instanceof Error ? error.message : String(error)}`,
       );
     return { entry: named, panels: [] };
@@ -312,7 +318,7 @@ export const entryLoader = (api: PodApi) =>
     const pod = params.pod ?? "";
     const id = params.id ?? "";
     const { answers } = await api.answers({ pod });
-    const own = entryOf(answers, id);
+    const own = entryOf(answers, id, { sections: SECTIONS });
     const unnamed = { entry: own, panels: [] };
     if (own === undefined)
       return { value: { pod, read: unnamed }, title: "Not found" };
@@ -323,7 +329,7 @@ export const entryLoader = (api: PodApi) =>
     );
     const full = async (entry: Entry | undefined): Promise<EntryRead> =>
       entry === undefined ? unnamed : fullEntry(api, pod, id, entry);
-    if (warming())
+    if (engineWarming())
       return {
         value: {
           pod,

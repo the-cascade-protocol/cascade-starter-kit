@@ -1,22 +1,28 @@
-// The browser target's host: PodApi in the page, over the pods this browser keeps in IndexedDB, the tables the
-// runtime keeps here, the samples published beside the app and the demo hospitals its own service worker answers,
-// signed in at in a popup. Every address is the app's base's, never the screen's: a screen's address is a path.
+// The browser target's host: PodApi in the page, over the pods this browser keeps in IndexedDB (`browserHost` of
+// `cascade-runtime/app`), with what is the app's own beside it: the demo hospitals its own service worker answers, the
+// first visit's samples and what Delete all data leaves in this browser. Every address is the app's base's, never the
+// screen's: a screen's address is a path.
 import {
   appTables,
-  checkSecret,
-  checkTables,
   configureRuntime,
   configureTables,
   ConnectionFailure,
-  deletePod,
   directoryOf,
   openPod,
-  podTitle,
-  popupSignIn,
   TEST_DIRECTORY,
   Unopened,
   warm,
 } from "cascade-runtime";
+import {
+  browserHost,
+  idleCounted,
+  PAGE_TOOLS,
+  pageBusy,
+  type Person,
+  podApi,
+  popupSignIns,
+  TOOLS,
+} from "cascade-runtime/app";
 import {
   hospitalId,
   setWorldDate,
@@ -24,33 +30,16 @@ import {
   worldDate,
 } from "@the-cascade-protocol/sandbox/web";
 import { addresses } from "../../addresses.ts";
-import { podApi } from "../../pod-api.ts";
-import { PAGE_TOOLS, type Person } from "../../said.ts";
-import { TOOLS } from "../../tools.ts";
+import { SECTIONS } from "../../said.ts";
 import type { Host, PodApi } from "../api.tsx";
-import { busy } from "../doing.ts";
-import { counted } from "../idle.ts";
 
 const BASE = new URL(import.meta.env.BASE_URL, location.href);
 configureRuntime({ base: new URL("cascade-runtime/", BASE).href });
 configureTables({ name: BASE.pathname });
 
-const DATABASE = "cascade-pod:";
-const ANSWERS = "cascade-answers:";
 const WORKER = new URL("demo-hospital-worker.js", BASE);
-/** How long a deletion waits before it says the pods are held open in other tabs. */
-const OTHER_TABS_MS = 2000;
 /** In this browser's storage while Delete all data is the last thing done, so that a later visit copies no sample in. */
 const DELETED_ALL = "cascade-try:deleted-all";
-
-/** The names of the databases here whose name starts with `prefix`, without it. */
-async function databases(prefix: string): Promise<string[]> {
-  return (await indexedDB.databases())
-    .map(({ name }) => name ?? "")
-    .filter((name) => name.startsWith(prefix))
-    .map((name) => name.slice(prefix.length))
-    .sort();
-}
 
 /** What the site was built with, beside the app, as JSON; `none` when it cannot be read. */
 async function beside<T>(file: string, none: T): Promise<T> {
@@ -97,40 +86,14 @@ interface Row {
 const demoHospitals = useDemoHospitals(WORKER);
 demoHospitals.catch(() => undefined);
 const directory = demoDirectory();
-let popup: Window | null | undefined;
+const sign = popupSignIns();
 const samples = (document.body.dataset.samples ?? "")
   .split(" ")
   .filter(Boolean);
 
-const browser = {
-  pods: {
-    names: () => databases(DATABASE),
-    title: (name: string) => podTitle(name),
-    open: (name: string, options?: object) => openPod(name, options),
-    checkSecret: (name: string, secret: string) => checkSecret(name, secret),
-    /** Deletes the pods and their answers, with `all` every answers database; never the tables. */
-    async remove(names: string[], { all = false } = {}) {
-      const gone = all
-        ? [...new Set([...names, ...(await databases(ANSWERS))])]
-        : names;
-      const slow = window.setTimeout(
-        () => busy("Waiting for the pods to close in your other tabs…"),
-        OTHER_TABS_MS,
-      );
-      const deleted = await Promise.allSettled(gone.map(deletePod));
-      window.clearTimeout(slow);
-      const failure = deleted.find(({ status }) => status === "rejected");
-      if (failure !== undefined)
-        throw (failure as PromiseRejectedResult).reason;
-    },
-  },
-  samples,
-  copySample: (name: string) =>
-    openPod(name, { from: new URL(`../${name}/pod/`, BASE).href }),
-  tables: (pod?: never) => appTables(pod),
-  checkTables: () => checkTables(),
-  opensEncrypted: true,
-  unsaid() {},
+const browser = browserHost({
+  samples: { names: samples, at: new URL("../", BASE) },
+  busy: pageBusy,
   world: {
     get: () => worldDate(WORKER).catch(() => undefined),
     async set(asOf: string | undefined) {
@@ -151,8 +114,7 @@ const browser = {
       try {
         await demoHospitals;
       } catch (error) {
-        popup?.close();
-        popup = undefined;
+        sign.close();
         throw new ConnectionFailure(
           "demo-unavailable" as ConstructorParameters<
             typeof ConnectionFailure
@@ -161,18 +123,7 @@ const browser = {
         );
       }
     },
-    signIn(row: Row, { pod }: { pod: string }, report: (href: string) => void) {
-      const signing = popup;
-      popup = undefined;
-      return (authorize: URL, signal?: AbortSignal) => {
-        if (row.vendor === "demo")
-          authorize.searchParams.set("login_hint", pod);
-        report(authorize.href);
-        return popupSignIn({ popup: signing })(authorize, signal).finally(() =>
-          signing?.close(),
-        );
-      };
-    },
+    signIn: sign.signIn,
     pullName: (row: Row) =>
       row.vendor === "demo"
         ? hospitalId({ hospital: row } as unknown as Parameters<
@@ -180,7 +131,7 @@ const browser = {
           >[0])
         : row.vendor,
   },
-};
+});
 
 /** PodApi in the page, an `Unopened` it throws named so, as the screens tell errors by name. */
 function named<T extends object>(api: T): T {
@@ -199,10 +150,10 @@ function named<T extends object>(api: T): T {
   ) as T;
 }
 
-const inPage = named(podApi(browser));
+const inPage = named(podApi(browser, { sections: SECTIONS }));
 
 /** PodApi in the page, with Delete all data noted in this browser's storage and a pod made or a reset forgetting it. */
-const api: PodApi = counted({
+const api: PodApi = idleCounted({
   ...inPage,
   async makePod(input) {
     const made = await inPage.makePod(input);
@@ -272,18 +223,7 @@ export const host: Host = {
     ...(dataset.code && { code: dataset.code }),
     ...(dataset.hub && { hub: dataset.hub }),
   },
-  openSignIn() {
-    const opened = window.open(
-      "",
-      "cascade-sign-in",
-      "popup,width=520,height=720",
-    );
-    popup = opened;
-    return () => {
-      opened?.close();
-      if (popup === opened) popup = undefined;
-    };
-  },
+  openSignIn: sign.open,
   failures: {
     "sign-in-unavailable": {
       said: (name) =>

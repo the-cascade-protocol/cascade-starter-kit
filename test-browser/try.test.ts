@@ -175,32 +175,91 @@ interface Section {
   readonly title: string;
   readonly question?: string;
 }
-/** What the test reads of what the pages say, `said.ts`, which both pages draw with. */
-interface View {
-  readonly QUESTIONS: readonly string[];
-  readonly SECTIONS: readonly Section[];
+/** What the test reads of what the pages say: `cascade-runtime/app`'s, which both pages draw with, and the app's tiles. */
+interface Library {
   sectionRows(section: Section, answers: Answers): Row[];
   worthALook(
     answers: Answers,
-    about?: Map<string, unknown>,
-    said?: unknown,
+    about: Map<string, unknown> | undefined,
+    said: unknown,
+    sections: readonly Section[],
   ): { sentence: string; entry: string; tag?: string }[];
-  seenAt(answers: Answers): Map<string, { places: string[]; across: number }>;
   entryId(entry: string): string;
   placeOf(row: Row): string;
   counted(records: Readonly<Record<string, number>>): string;
-  hospitalName(name: string): string;
   day(text: string): string;
-  dayInWords(asOf: string): string;
+  dayAtInWords(time: number): string;
   demoPeople(demo: unknown): Person[];
   familyFirst(person: Person): string;
-  patientName(bundle: unknown): string | undefined;
   slug(person: string): string;
 }
-
-const view = (await import(
+const library = (await import("cascade-runtime/app")) as unknown as Library;
+const kit = (await import(
   pathToFileURL(join(ROOT, "app", "said.ts")).href
-)) as View;
+)) as {
+  SECTIONS: readonly Section[];
+  hospitalName(name: string): string;
+};
+const SEEN = "pod/What was seen more than once";
+const view = {
+  ...library,
+  ...kit,
+  worthALook: (
+    answers: Answers,
+    about?: Map<string, unknown>,
+    said?: unknown,
+  ) => library.worthALook(answers, about, said, kit.SECTIONS),
+  dayInWords: (asOf: string) => library.dayAtInWords(Date.parse(asOf)),
+  /** Every question the pod's page reads: the app's tiles' and the ones every pod's page asks. */
+  QUESTIONS: [
+    ...new Set([
+      "entry/Where it came from",
+      SEEN,
+      "entry/What needs review",
+      "pod/My genetic variants",
+      "pod/What each report says of a variant",
+      "pod/My medication history",
+      "pod/What each import brought in",
+      ...kit.SECTIONS.flatMap(({ question }) => question ?? []),
+    ]),
+  ],
+  /** Where each entry seen more than once was seen, by place as a page says it, and from how many places. */
+  seenAt(answers: Answers) {
+    const seen = new Map<string, { places: string[]; across: number }>();
+    for (const row of answers[SEEN] ?? []) {
+      const entry = String(row.entry);
+      if (!seen.has(entry))
+        seen.set(entry, { places: [], across: Number(row.places) });
+      const { places } = seen.get(entry)!;
+      const place = library.placeOf({ hospital: String(row.place) });
+      if (row.place !== undefined && !places.includes(place))
+        places.push(place);
+    }
+    return seen;
+  },
+  /** The person a hospital's Patient file is about: its official name, else its first. */
+  patientName(bundle: unknown): string | undefined {
+    const patients = (
+      (bundle as { entry?: { resource?: Patient }[] }).entry ?? []
+    ).flatMap(({ resource }) =>
+      resource?.resourceType === "Patient" ? [resource] : [],
+    );
+    const names = patients.at(-1)?.name ?? [];
+    const name = names.find(({ use }) => use === "official") ?? names[0];
+    return (
+      [...(name?.given ?? []), name?.family].filter(Boolean).join(" ").trim() ||
+      undefined
+    );
+  },
+};
+interface Patient {
+  readonly resourceType?: string;
+  readonly name?: {
+    readonly use?: string;
+    readonly given?: string[];
+    readonly family?: string;
+  }[];
+}
 const TOOLS = await listed();
 
 let served: Served;

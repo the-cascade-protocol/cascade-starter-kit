@@ -16,15 +16,20 @@ import {
   loadHospitals,
   serveDemo,
 } from "@the-cascade-protocol/sandbox/node";
-import { nodeHospitals, nodeHost } from "../node-host.ts";
-import { podApi } from "../pod-api.ts";
+import {
+  demoPeople,
+  newLaunch,
+  nodeHost,
+  type Own,
+  podApi,
+  worldInstant,
+} from "cascade-runtime/app";
+import { devOptions } from "cascade-runtime/vite";
 import { PODS } from "../pods.ts";
-import { demoPeople, worldInstant } from "../said.ts";
+import { SECTIONS } from "../said.ts";
 import { appServer, type ChatServed, type Served } from "./app.ts";
 import { buildStalePages } from "./built.ts";
-import { devOptions } from "./dev-options.ts";
-import type { Own } from "./guard.ts";
-import { newLaunch } from "./launch.ts";
+import { nodeHospitals } from "./demo-hospitals.ts";
 
 const APP = fileURLToPath(new URL("../", import.meta.url));
 const DIST = join(APP, "dist");
@@ -93,7 +98,7 @@ function startingDate(): string | undefined {
 }
 
 const host = nodeHost({ folder: PODS, unsaid });
-const api = podApi(host);
+const api = podApi(host, { sections: SECTIONS });
 const demo = await hospitalsHeld();
 const people = demoPeople(demo);
 const startedAsOf = startingDate();
@@ -122,11 +127,11 @@ const app = appServer({
   pages:
     vite === undefined
       ? DIST
-      : async (c) => {
+      : async ({ incoming, outgoing }) => {
           await new Promise<void>((resolve) => {
-            c.env.outgoing.once("close", resolve);
-            vite.middlewares(c.env.incoming, c.env.outgoing, () => {
-              c.env.outgoing.writeHead(404).end();
+            outgoing.once("close", resolve);
+            vite.middlewares(incoming, outgoing, () => {
+              outgoing.writeHead(404).end();
             });
           });
           return RESPONSE_ALREADY_SENT;

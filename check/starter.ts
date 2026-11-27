@@ -22,7 +22,7 @@ import { dirname, join, relative, resolve, sep } from "node:path";
 import { argv, cwd, env, execPath, kill, platform, stdout } from "node:process";
 import { pathToFileURL, URL } from "node:url";
 import { setTimeout } from "node:timers";
-import { parseArgs } from "node:util";
+import { parseArgs, stripVTControlCharacters } from "node:util";
 import * as oxigraph from "oxigraph";
 import { chromium } from "playwright";
 import { codeStems, terms } from "cascade-runtime/terms";
@@ -887,6 +887,17 @@ await addOnBehaviour("help lists every command", async () => {
 await addOnBehaviour("the app's own tests pass: npm test", async () => {
   const { code, out, err } = await npm("test");
   assert.equal(code, 0, `npm test failed:\n${out}\n${err}`);
+  // vitest's `passWithNoTests` passes an app whose add-on's test was not copied, so the files run are counted.
+  const files = Number(
+    /Test Files\s+(\d+) passed/.exec(
+      stripVTControlCharacters(`${out}\n${err}`),
+    )?.[1] ?? 0,
+  );
+  assert.equal(
+    files,
+    added.length,
+    `npm test ran ${files} test files; the app has ${added.length} add-ons, each with one`,
+  );
 });
 
 await addOnBehaviour(

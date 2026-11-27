@@ -39,7 +39,7 @@ describe("Tripwire: a code system's IRI stem written in a source file", () => {
           .filter((name) => name.endsWith(".ts"))
           .map((name) => `create/src/${name}`),
       ];
-      assert.ok(sources.includes("app/pod-api.ts"));
+      assert.ok(sources.includes("app/server/app.ts"));
       assert.ok(sources.includes("app/said.ts"));
       assert.ok(sources.includes("app/src/pod.tsx"));
       assert.ok(sources.includes("add-ons/chat/server/chat.ts"));

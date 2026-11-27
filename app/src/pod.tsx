@@ -5,9 +5,9 @@ import { useEffect, useState } from "react";
 import { flushSync } from "react-dom";
 import { useRevalidator, type LoaderFunctionArgs } from "react-router";
 import {
-  BRINGING,
   maps,
-  refusal,
+  engineWarming,
+  whenNamed,
   type Abouts,
   type Answers,
   capitalised,
@@ -18,35 +18,28 @@ import {
   entryId,
   type Finding,
   HISTORY,
-  hospitalName,
   type How as HowSaid,
   howOf,
-  LAB_SECTION,
   LABS,
   named,
   namingCredits,
-  openingOrder,
   type Person,
   personName,
   placeOf,
-  plotOf,
   pullSaid,
+  Refusal,
   REPORTS,
   resultsSaid,
   rounded,
   type SectionRow as Row,
-  type Section,
   medicationDay,
   sectionRows,
-  SECTIONS,
   sentenceOf,
   type Series,
   slug,
-  SMALL,
   SOURCES,
   stepWhenSaid,
   textOf,
-  timeOf,
   trendOfFinding,
   valuesSaid,
   type VariantsSaid,
@@ -54,12 +47,22 @@ import {
   waitingSaid,
   worthALook,
   leftSaid,
+} from "cascade-runtime/app";
+import {
+  BRINGING,
+  hospitalName,
+  LAB_SECTION,
+  openingOrder,
+  plotOf,
+  type Section,
+  SECTIONS,
+  SMALL,
+  timeOf,
 } from "../said.ts";
 import { useAddress } from "./address.tsx";
 import { useHost, type ConnectionNow, type PodApi } from "./api.tsx";
 import { AskButton } from "./ask.tsx";
 import { Chart } from "./chart.tsx";
-import { warming, whenNamed } from "./engine.ts";
 import { Connection, SignIn, WorldDate } from "./hospitals.tsx";
 import {
   bullet,
@@ -561,8 +564,8 @@ export function PodPage({
   const trendHref = (finding: Finding) =>
     address.trend(pod, trendOfFinding(finding));
   const names: Abouts = about ?? new Map();
-  const answers = named(asked, names);
-  const credits = namingCredits(asked, names, held);
+  const answers = named(asked, names, SECTIONS);
+  const credits = namingCredits(asked, names, held, SECTIONS);
   const sources = answers[SOURCES] ?? [];
   const records = new Set(sources.map((row) => row.record)).size;
   const places = [...new Set(sources.map(placeOf))];
@@ -625,7 +628,7 @@ export function PodPage({
         <p className={note}>{waitingSaid(personName(pod, titles), waiting)}</p>
       )}
       <Worth
-        lines={worthALook(answers, names, said)}
+        lines={worthALook(answers, names, said, SECTIONS)}
         entryHref={entryHref}
         waiting={
           about === undefined &&
@@ -738,7 +741,7 @@ export const podLoader = (api: PodApi) =>
     const pod = params.pod ?? "";
     const { pods } = await api.pods();
     if (!pods.some(({ name }) => name === pod))
-      throw refusal(`This app keeps no pod named ${pod}.`);
+      throw new Refusal(`This app keeps no pod named ${pod}.`);
     const [answered, { asOf }, connection] = await Promise.all([
       api.answers({ pod }),
       api.hospitals({}),
@@ -764,7 +767,7 @@ export const podLoader = (api: PodApi) =>
             ? { from: connection.row.name }
             : connection !== undefined && { connection }),
         },
-        named: warming() ? named : await named,
+        named: engineWarming() ? named : await named,
       } satisfies PodRead,
       title: personName(pod, titles),
       ...(connection !== undefined &&

@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
-import { join } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { NEVER, TOOLS } from "cascade-runtime/app";
 import type { Page } from "playwright";
 
 const pageErrors = new WeakMap<Page, string[]>();
@@ -394,22 +393,14 @@ export function recordTools(): void {
   });
 }
 
-const ROOT = fileURLToPath(new URL("../../", import.meta.url));
-
 /**
- * The tools of the one list (`tools.ts`), which every screen offers the model context, and the names of the ops that
+ * The tools of the one list (`TOOLS` of `cascade-runtime/app`), which every screen offers the model context, and the names of the ops that
  * no tool at all calls (`makePod` is not one: only a call with `encrypt` is).
  */
 export async function listed(): Promise<{
   names: string[];
   never: string[];
 }> {
-  const { TOOLS, NEVER } = (await import(
-    pathToFileURL(join(ROOT, "app", "tools.ts")).href
-  )) as {
-    TOOLS: { name: string }[];
-    NEVER: { op: string; with?: string }[];
-  };
   return {
     names: TOOLS.map(({ name }) => name).sort(),
     never: NEVER.filter(({ with: given }) => given === undefined).flatMap(

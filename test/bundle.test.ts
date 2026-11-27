@@ -29,9 +29,9 @@ async function bundled(mode?: string) {
   return { chunks, modules };
 }
 
-/** The modules `cascade-runtime/tools` is made of: plain functions that read through what they are given, with no wasm. */
-const TOOLS_MODULES =
-  /\/node_modules\/cascade-runtime\/dist\/src\/(pod-tools|changes|table-checks|check|options|row-text)\.js$|\/@cascade-runtime\/runtime\/dist\/src\/refusal\.js$/;
+/** The modules of cascade-runtime that hold the engine: its browser build, its pod and Oxigraph. */
+const ENGINE =
+  /\/node_modules\/cascade-runtime\/dist\/(browser\/|src\/browser\/|src\/pod\.js$)|\/node_modules\/oxigraph\//;
 
 /** A module of the chat window: the AI SDK, assistant-ui, or the window's own code. */
 const ofChat = (id: string) =>
@@ -40,8 +40,8 @@ const ofChat = (id: string) =>
 
 /**
  * What the app is built into for each target, read from a build kept in memory. The Node target's pages call the server
- * through its typed client and load the chat window in a chunk of their own; the browser target runs PodApi in the page
- * and draws no chat.
+ * through `remoteApi` of `cascade-runtime/app` and load the chat window in a chunk of their own; the browser target runs
+ * PodApi in the page and draws no chat.
  */
 describe("The app's bundle for each target · vite build", () => {
   describe("given the Node target's bundle", () => {
@@ -52,10 +52,12 @@ describe("The app's bundle for each target · vite build", () => {
       ({ chunks, modules } = await bundled());
     });
 
-    it("holds the typed client of the server's routes", () => {
+    it("holds the `remoteApi` of cascade-runtime/app, the client of the server's routes", () => {
       assert.ok(
-        modules.some((id) => id.includes("/node_modules/hono/dist/client/")),
-        "the bundle has no typed client",
+        modules.some((id) =>
+          id.endsWith("/node_modules/cascade-runtime/dist/src/app/remote.js"),
+        ),
+        "the bundle has no client of the server's routes",
       );
     });
 
@@ -69,27 +71,14 @@ describe("The app's bundle for each target · vite build", () => {
       );
     });
 
-    it("holds cascade-runtime's check of a tool's input", () => {
-      assert.ok(
-        modules.some((id) =>
-          id.endsWith("/node_modules/cascade-runtime/dist/browser/check.js"),
-        ),
-        "the bundle has no check of a tool's input",
-      );
-    });
-
-    it("holds no other module of cascade-runtime than its check, its terms and its tools, no server code and no PodApi", () => {
+    it("holds no module of the browser build of cascade-runtime, of its engine or of Oxigraph, and no server code", () => {
       assert.deepEqual(
         modules.filter(
           (id) =>
-            (id.includes("/node_modules/cascade-runtime/") &&
-              !id.endsWith("/dist/browser/check.js") &&
-              !id.endsWith("/dist/src/terms.js") &&
-              !TOOLS_MODULES.test(id)) ||
+            ENGINE.test(id) ||
             id.includes("/app/server/") ||
-            id.endsWith("/app/pod-api.ts") ||
             id.includes("/node_modules/@hono/") ||
-            /\/node_modules\/hono\/dist\/(?!client\/|utils\/)/.test(id),
+            id.includes("/node_modules/hono/"),
         ),
         [],
       );

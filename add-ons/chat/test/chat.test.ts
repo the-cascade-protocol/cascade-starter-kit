@@ -3,14 +3,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { LanguageModelV4StreamPart } from "@ai-sdk/provider";
 import { MockLanguageModelV4 } from "ai/test";
+import { launchCookie, newLaunch, nodeHost, podApi } from "cascade-runtime/app";
 import { replayKit } from "cascade-runtime/fixtures";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Model } from "../models.ts";
-import { nodeHost } from "../node-host.ts";
-import { podApi } from "../pod-api.ts";
+import { SECTIONS } from "../said.ts";
 import { appServer } from "../server/app.ts";
 import { chatRoutes } from "../server/chat.ts";
-import { launchCookie, newLaunch } from "../server/launch.ts";
 
 const ORIGIN = "http://app.test";
 const launch = newLaunch();
@@ -64,7 +63,7 @@ beforeAll(async () => {
   await replayKit("alex-rivera", join(folder, "alex-rivera"), {
     through: "E2",
   });
-  api = podApi(nodeHost({ folder }));
+  api = podApi(nodeHost({ folder }), { sections: SECTIONS });
   app = appServer({
     api,
     own: () => ({ hosts: new Set(["app.test"]), origins: new Set([ORIGIN]) }),

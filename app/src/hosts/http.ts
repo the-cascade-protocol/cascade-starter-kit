@@ -1,13 +1,16 @@
 // The Node target's host: PodApi at the server's `/api/`, beside the app, and the chat at its `/chat` when the chat
-// add-on is here. The bundle carries the typed client only: no server code and no runtime.
+// add-on is here. The page runs no PodApi: it calls the server's through `remoteApi`, and holds no server code.
+import {
+  idleCounted,
+  type Person,
+  Refusal,
+  remoteApi,
+} from "cascade-runtime/app";
 import { lazy } from "react";
-import { type Person, refusal } from "../../said.ts";
 import type { ChatModel, Host, HostChat, PodApi, ReadTool } from "../api.tsx";
-import { counted } from "../idle.ts";
-import { remoteApi } from "./remote.ts";
 
 const BASE = new URL(import.meta.env.BASE_URL, location.href);
-const api: PodApi = counted(remoteApi(BASE.href));
+const api: PodApi = idleCounted(remoteApi(BASE.href));
 /** The chat add-on's window, found by Vite when it builds the app: none without the add-on, which then has no chat. */
 const [chatWindow] = Object.values(
   import.meta.glob<{ ChatWindow: HostChat["Window"] }>("../chat/window.tsx"),
@@ -21,7 +24,7 @@ async function model(): Promise<ChatModel | undefined> {
   return typeof named.name === "string" ? (named as ChatModel) : undefined;
 }
 
-/** The reads of the one list, which the server runs at `/tools`: the bundle carries no runtime to run them. */
+/** The reads of the one list, which the server runs at `/tools`: the page runs no PodApi to run them. */
 const reads: Host["reads"] = {
   async list() {
     const response = await fetch(new URL("tools", BASE));
@@ -41,7 +44,7 @@ const reads: Host["reads"] = {
     };
     throw body.refused === undefined
       ? new Error(`the tool ${name} answered ${response.status}`)
-      : refusal(body.refused);
+      : new Refusal(body.refused);
   },
 };
 

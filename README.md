@@ -30,8 +30,10 @@ The template's pages are React with React Router, built by Vite. On Node,
 `npm start` serves them from a [Hono](https://hono.dev) server that answers
 PodApi at `/api/`; `npm run browser` builds the same app to run PodApi in the
 page, which is what try/ is. Every file of it is TypeScript, and Node runs the
-server and the commands as they are. The tools a model reaches, WebMCP and
-each add-on's door alike, are one list with consent tiers (`app/tools.ts`).
+server and the commands as they are. The screens are yours to change;
+`cascade-runtime/app` is a library you depend on, this runtime's own aid to app
+builders (a conforming runtime need not provide it): PodApi, its hosts, the server's
+handler and the one list of tools a model reaches, with consent tiers.
 
 ## The base and the add-ons
 

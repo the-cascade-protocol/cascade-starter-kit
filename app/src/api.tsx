@@ -2,16 +2,16 @@
 // and what only the host knows. A screen never knows which host it runs on.
 import type { CompactAnswer } from "cascade-runtime/tools";
 import { createContext, useContext, type ComponentType } from "react";
-import type {
-  AnsweredRow,
-  Answers,
-  Checked,
-  Failure,
-  Finding,
-  Person,
-  Series,
-  Waiting,
-} from "../said.ts";
+import {
+  type AnsweredRow,
+  type Answers,
+  type Checked,
+  type Failure,
+  type Finding,
+  type Person,
+  type Series,
+  type Waiting,
+} from "cascade-runtime/app";
 import type { TableRead } from "./tables.tsx";
 
 /** A pod there is, by name, with the name it was made under. */

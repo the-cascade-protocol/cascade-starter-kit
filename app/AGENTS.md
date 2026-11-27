@@ -1,8 +1,10 @@
 # For an agent building on this app
 
-This app was made from the Cascade starter. It is a demonstration, not a
-foundation: rebuild it in any framework. What carries over is
-`cascade-runtime`, which keeps the pods, and the pods under `pods/<name>/`. It
+This app was made from the Cascade starter. The screens are yours to change;
+`cascade-runtime/app` is a library you depend on, this runtime's own aid to app
+builders (a conforming runtime need not provide it): PodApi, its hosts, the
+server's handler and the words every app says the same way. `cascade-runtime`
+keeps the pods, under `pods/<name>/`. The app
 starts with four, Alex Rivera's, Priya Natarajan's, Martin Okafor's (two
 FHIR reports of one variant, beside what ClinVar says today) and Tamsin Vale's
 (two pulls from Cascade North a year apart), loaded from the
@@ -17,7 +19,7 @@ of Priya's C-CDA files under its own name.
 
 The app is TypeScript throughout. Its pages are one React app, `index.html`
 and `src/`, routed by React Router and built by Vite (`vite.config.ts`, with
-the plugin of `vite/cascade.ts`); every other file, the server and the
+`cascadeRuntime` of `cascade-runtime/vite`); every other file, the server and the
 commands among them, is a `.ts` that Node runs as it is, with no build (Node
 24 or later strips its types). `npm run typecheck` checks all of it. The
 app has two targets:
@@ -25,23 +27,23 @@ app has two targets:
 - **On Node,** `npm start` builds it into `dist/` (again whenever a file it is
   built from is newer) and serves it from `server/main.ts` at
   `http://127.0.0.1:3000/?launch=<token>` (the address it prints, whose random
-  token `server/launch.ts` trades once for the cookie that `/api/`, `/tools` and
+  token the handler trades once for the cookie that `/api/`, `/tools` and
   `/chat` ask for), over the pods in `pods/`; `npm run dev` serves the
   sources through Vite in the same process instead, the pages redrawn on every
   save. Its pages reach PodApi over HTTP: `src/hosts/http.ts` calls
-  `POST /api/<operation>` through Hono's typed client (`src/hosts/remote.ts`),
-  and `server/api.ts` answers it, each input checked by `server/inputs.ts`.
-  `server/app.ts` is the server: the guard (`server/guard.ts`) and the launch's
-  cookie (`server/launch.ts`; not asked at `/callback`, which a hospital's
-  cross-site redirect reaches without it), `/api/`,
-  `/tools`, `/callback`, `/world-date` and the built pages, and `/chat` when
-  the chat is added (without it, `/chat` is a 404).
+  `POST /api/<operation>` through `remoteApi` of `cascade-runtime/app`, and
+  `appHandler` of it answers, each input checked by its schemas. `server/app.ts`
+  is the server: it mounts the handler on Hono and gives it the pages. The
+  handler holds the guard and the launch's cookie (not asked at `/callback`,
+  which a hospital's cross-site redirect reaches without it), `/api/`,
+  `/tools`, `/callback` and `/world-date`, and `/chat` when the chat is added
+  (without it, `/chat` is a 404); `server/app.ts` serves the built pages.
 - **In a browser alone,** `npm run browser` (`server/browser.ts`) builds it
   with Vite's `browser` mode into `dist-browser/`, with the kits' samples that
   a first visit copies, and serves those files on 127.0.0.1; nothing answers
   `/api/`. Its pages run PodApi in the page: `src/hosts/browser.ts` calls
-  `podApi` of `pod-api.ts` over `cascade-runtime`'s browser build, which the
-  plugin copies beside the bundle with the demo hospitals' service worker, and
+  `podApi` of `cascade-runtime/app` over `browserHost` and `cascade-runtime`'s
+  browser build, which the plugin copies beside the bundle with the demo hospitals' service worker, and
   the pods are kept in the browser's storage. It has no chat.
 
 `src/main.tsx` picks the host by the build's mode and makes the router, React
@@ -53,9 +55,12 @@ screen), `shell.tsx` (the title bar, the sidebar and the boxes), `pod.tsx` (a
 pod's page), `entry.tsx`, `trend.tsx`, `classes.tsx`, `panel.tsx`,
 `tables.tsx`, `hospitals.tsx` (bringing in a record, the world's date) and
 `newpod.tsx` (a new pod, and an encrypted one's six words), with `parts.tsx`,
-`chart.tsx`, `screen.tsx`, `actions.tsx`, `doing.ts`, `engine.ts`, `look.ts`
-and `style.css`. What they say comes from `said.ts`: plain functions with no
-imports, from a pod's question rows to what a page says. `addresses.ts` makes
+`chart.tsx`, `screen.tsx`, `actions.tsx`, `doing.ts`, `look.ts`
+and `style.css`. What they say comes from `cascade-runtime/app`, from a pod's
+question rows to the names, dates and sentences a page draws, and from `said.ts`,
+the app's own: its tiles (`SECTIONS`, which the app hands to `podApi` and to
+the functions that read them), the chart's geometry and the words of its menus
+and forms. `addresses.ts` makes
 every address; a screen never builds one. Rewrite any of it as you like.
 
 **Reading.** Each screen's file has its loader (`podLoader`, `entryLoader`, …),
@@ -64,7 +69,7 @@ wrapped in `screen(…)` of `screen.tsx`, and its `…Screen`, which draws
 The loader returns the screen's `value` and the tab's `title`; a `Refusal` it
 meets is the screen's own "Not found", and an encrypted pod that will not open
 its unlock screen, drawn at the address asked for. What the tables say comes
-once the engine has warmed (`engine.ts`): while it warms, a loader hands the
+once the engine has warmed (`whenNamed` of `cascade-runtime/app`): while it warms, a loader hands the
 screen a promise for it, which `useLate()` draws once it settles, the part
 still to come marked `aria-busy` (`Pending` of `parts.tsx`) meanwhile.
 
@@ -78,8 +83,8 @@ is returned as data, `{ refused }`, which the screen draws as "Not done" with
 its sentence, never as something gone wrong. A model's tools move and write
 through the router too (`useToolSteps`).
 
-**What the body says.** `body[data-state]` is written by `doing.ts` from the
-router: `watch(router)` and the component `PageState`. It is `opening` until
+**What the body says.** `body[data-state]` is written by `cascade-runtime/app`
+from the router: `watchRouter(router)` and the component `PageState` of `doing.ts`. It is `opening` until
 the first screen is drawn, `busy` (every button off, the doing line saying
 what) from the moment the router starts to read or run anything, and while a
 read says it is still under way (a connection followed), `ready` in the commit
@@ -89,8 +94,8 @@ read or a step went wrong, a part that fills late among them. After a step,
 step brought is drawn after it; after a plain move they fill in after it.
 Three other places write it, each for a moment the router does not see:
 `main.tsx` (an address outside the base, an app that could not start), the
-browser host's `busy("Waiting for the pods to close…")` during a deletion,
-and `Screen`'s `ready()` just before it leaves for a hospital's sign-in page.
+browser host's `pageBusy("Waiting for the pods to close…")` during a deletion,
+and `Screen`'s `pageReady()` just before it leaves for a hospital's sign-in page.
 `data-trace` keeps the last eight changes of state, each with where and who
 asked: a test that fails prints it.
 
@@ -104,10 +109,10 @@ To add a screen:
 3. Give it a route in `App.tsx`, `leaf(path, loader, Screen)`, which gives it
    the steps and the shell. A step of its own is one more entry of `steps`.
 4. An operation of PodApi it needs that the screens do not call yet: its line
-   in `PodApi` of `src/api.tsx`. A new operation is a function of
-   `podApi(host)` in `pod-api.ts`, its input's schema in `server/inputs.ts` and
-   its route in `server/api.ts`; the Node target's typed client then knows its
-   input and output, and the browser target calls it in the page.
+   in `PodApi` of `src/api.tsx`. A new operation is a change to PodApi
+   in the runtime (`cascade-runtime/app`), which carries its input's schema and
+   its route; the Node target's typed client then knows its input and output,
+   and the browser target calls it in the page.
 
 Styling is Tailwind 4, set up in `src/style.css` (the plugin is in
 `vite.config.ts`). `@theme` there holds the colours, the one breakpoint (`md`,
@@ -133,21 +138,21 @@ select by must not be a utility's name (`grid`, `table`, `hidden`, `block`):
 the utility's variables are empty, and stays because the tests select it.
 
 The app, `npm run ask` and every add-on reach the pods through
-`podApi(host)` in `pod-api.ts`, plain JSON in and out, each operation with one
-input type, its route's schema (`Input` of `server/inputs.ts`), and one output
-type (`Output` of `pod-api.ts`), which the server also
-serves as `POST /api/<operation>`; `pod.ts` (`npm run pod:load`, and `npm run reset`
-through `resetAll` in `pods.ts`) writes pods with `openPod` and `replayKit` directly,
+`podApi(host, { sections: SECTIONS })` of `cascade-runtime/app`, plain JSON in
+and out, each operation with one input type, its route's schema (`Input` of
+`cascade-runtime/app`), and one output type (`Output`), which the handler also
+serves as `POST /api/<operation>`; `pod.ts` (`npm run pod:load`) writes pods with `replayKit` directly
+(`npm run reset`, through `resetAll` in `pods.ts`, loads them through `loadSample` of `cascade-runtime/app`),
 and `console.ts` opens a raw `Pod` through `openWithoutWords`;
 an encrypted pod is opened only by the app, with its six words (`src/newpod.tsx`,
 at `/encrypted-pods/<name>`), and `npm run ask` refuses it, as its host is
-`nodeHost({ opensEncrypted: false })` (`node-host.ts`), and `console.ts` refuses it too;
-`tools.ts` holds the one list of tools a model reaches the app by (`TOOLS`), each
+`nodeHost({ opensEncrypted: false })` of `cascade-runtime/app`, and `console.ts` refuses it too;
+`TOOLS` of `cascade-runtime/app` is the one list of tools a model reaches the app by, each
 calling `podApi`'s operations only. A tool takes one `kind` of act (`ReadingPodsOrTables`, `MovingTheAppsView`,
 `MakingAPodThatIsNotEncrypted`, `ChangingTheAppsTablesOrSettings`), and its consent `tier` is the one the protocol gives
 that kind (`TIER_OF_KIND` of `cascade-runtime/tools`, from the vocabulary's `cascade:consentTier`), never one written
 beside the tool: `free` reads
-(`list_pods`, the change tools, `ask` and `reference_table_checks`, which are `TOOLS` of `cascade-runtime/tools` run over `podApi` as its `PodReads`; and `worth_a_look`, the kit's own) and moves the app
+(`list_pods`, the change tools, `ask` and `reference_table_checks`, which are `TOOLS` of `cascade-runtime/tools` run over `podApi` as its `PodReads`; and `worth_a_look`) and moves the app
 (`open_pod`, `open_trend`, `open_entry`, `open_classes`, `open_panel`, `open_table`, through the door's `open` and its own addresses), and `ask` writes,
 which the person confirms first (`make_pod`, never encrypted; `check_tables`; `set_world_date`). `NEVER` is what
 no tool calls, each with its `kind` of act, which the protocol puts at `never`: `makePod` with `encrypt`, `waiting`,
@@ -160,7 +165,7 @@ made-up records (the kits, the demo hospitals); before connecting real records,
 decide whether a hosted model may see them.
 A pod's page also brings in a record from a hospital of the test directory
 (`src/hospitals.tsx`). On Node the person signs in on the hospital's own page
-in the same tab, and `hospitals.ts` receives the redirect on `/callback`,
+in the same tab, and `signIns` of `cascade-runtime/app` receives the redirect on `/callback`,
 which goes back to the pod's page with the connection in a box over it
 (`?connection=<n>#connection`); in a browser the sign-in opens in a popup that
 returns to `signed-in.html`. The demo hospitals, in `demo-hospital/`, are
@@ -168,7 +173,7 @@ pretend: on Node they answer on a loopback port of their own (`serveDemo`), in
 a browser from the service worker the build carries.
 The title bar's File menu runs `podApi`'s `deleteAll` and `resetAll`; both keep
 the reference tables, and on Node `resetAll` then loads the kits through
-`restoreKits` in `pods.ts`, as `npm run reset` does; Help, About says the app's
+`restoreKits` of `cascade-runtime/app`, as `npm run reset` does; Help, About says the app's
 name and version and the `cascade-runtime` it runs on.
 Under the pods, the sidebar lists the sources of the reference tables the pods
 are matched with (`sourcesOf(held())`, from `tablesBeside`). `/tables/<id>/`
@@ -195,8 +200,8 @@ comparison of means and never a cause; each card links to its results
 `record/What each version says`): the imports in order, each with its source, its retrieved date and what it brought
 in, and the medication's versions with what differs between them. Alex's, Priya's and Martin's pods
 hold too little for a card; Tamsin's holds one, and so does a story patient's:
-Ines Calloway, at Cascade North, by "+ New pod" and "Sign in at Cascade North". `TREND_VIEW` is the trend as a tool
-a model can call, `open_trend` of `tools.ts`; a model reaches the trend by it, or through each
+Ines Calloway, at Cascade North, by "+ New pod" and "Sign in at Cascade North". `open_trend` of `TOOLS` is the trend as a tool
+a model can call; a model reaches the trend by it, or through each
 `find_changes` finding's `view` address.
 A row of a tile's table opens its entry at
 `/pods/<name>/entries/<id>`: what it is, where it came from (a line for each
@@ -232,8 +237,10 @@ An app never:
 
 ## The starter
 
-This app was made from a starter, a demonstration: rebuild it in any framework,
-keeping the package and the pods, under `pods/<name>/`. It is made with four,
+This app was made from a starter: the screens are yours to change, and
+`cascade-runtime/app` is a library you depend on, this runtime's own aid to app
+builders (a conforming runtime need not provide it). The pods stay under
+`pods/<name>/`. It is made with four,
 `alex-rivera`, `priya-natarajan`, `martin-okafor` and `tamsin-vale`.
 
 - `npm run help` lists every command.
@@ -243,7 +250,7 @@ keeping the package and the pods, under `pods/<name>/`. It is made with four,
   from `server/main.ts` on `PORT` (3000 if unset), with PodApi at `/api/`;
   stop it with Ctrl+C or by its process, never
   by killing every Node process. A pod's page links to bringing in a record from
-  a hospital of the test directory: the app's `hospitals.ts` signs in,
+  a hospital of the test directory: `signIns` of `cascade-runtime/app` signs in,
   receiving the redirect on `/callback`. An option to an npm script goes after
   `--`.
 - `npm run dev` serves the same app from its sources through Vite, in the same
@@ -320,11 +327,8 @@ keeping the package and the pods, under `pods/<name>/`. It is made with four,
 Run `npm test` after a change; it takes a few seconds. The tests are examples to copy: each shows one behaviour, on the
 smallest input that shows it, and asserts what it means, never bytes or a whole file.
 
-- `test/api.test.ts` puts PodApi behind the server in the process: `appServer(...)` from `server/app.ts` over a pod
-  replayed from a kit into a temporary folder, called with `app.request()`, so no port is opened. Copy it to test a new
-  operation or route: it lists the pods by name, returns rows for a question's name, and answers 400 with the rules' reason, `{ refused }`, for a pod there is none of.
-- `test/tools.test.ts` holds the tool list to its rules: every tool in `tools.ts` has the tier of its kind (`free` or
-  `ask`), every kind of `NEVER` is at `never`, and no tool calls an operation of `NEVER`. A tool you add needs a row in `RUNS`, or the test fails.
+- The app ships no unit test of its own: PodApi, the handler and the tool list are tested in cascade-runtime. `npm test`
+  passes with none; a test you add to `test/` is run by it.
 - `e2e/pod.test.ts` is the one browser test, on Playwright: it starts the app with `npm start`, opens Alex Rivera's pod
   and waits for the page to say it is ready (`body[data-state="ready"]`, never `main`'s text), then looks for its
   tiles (`.tiles .tile`), as two steps of one test. A failure prints `body[data-trace]`, the page's last changes of state. Chromium is not
@@ -347,25 +351,20 @@ offers nothing). The tools are the whole of `TOOLS`, every tool by its tier:
   `src/confirm.tsx`), one at a time, which the chat's writes use too when it is added. Allow runs the write as the
   route's action, which reads the screen again; Cancel, or leaving the pod, answers `{ refused: "The person said no" }`
   and writes nothing.
-- the **never** list (`NEVER` in `tools.ts`) is no tool in any door.
+- the **never** list (`NEVER` of `cascade-runtime/app`) is no tool in any door.
 
 With a pod shown, a tool of one pod takes it as given; on a screen with none (the tables, a locked pod) it takes the
 pod's name as `pod`. `open_pod` always takes the name. The tools are offered again only when the pod shown changes, and
 taken away in the commit that draws the next one.
 
 The list is one, whatever door offers it: WebMCP (`src/tools.ts`) offers every tool, and each add-on that is a door
-(the chat, the MCP server) says below which it offers. The Node bundle
-carries no runtime, so its page gets the reads from the server: `GET /tools` lists them and `POST /tools/<name>` runs
-one (`server/tools.ts`), while the browser target runs them in the page (`reads` of `src/hosts/browser.ts`).
+(the chat, the MCP server) says below which it offers. The Node page
+runs no PodApi, so it gets the reads from the server: `GET /tools` lists them and `POST /tools/<name>` runs
+one (the handler's), while the browser target runs them in the page (`reads` of `src/hosts/browser.ts`).
 
 To add a tool:
 
-- one the page runs itself (it moves the app, or writes after the person's Allow): one entry in `PAGE_TOOLS` in
-  `said.ts`, with the `kind` of act it takes (its tier follows) and `run(api, input, door)` calling only PodApi's
-  operations and moving through `door.open`. A write
-  also needs an entry in `ACTIONS` in `src/confirm.tsx`. Every door then offers it.
-- one the server runs (a read) that any app would want: one entry in `TOOLS` of `cascade-runtime/tools`, which `tools.ts`
-  takes whole. One only this app has (`worth_a_look`): one entry in `tools.ts`, with `kind: "ReadingPodsOrTables"` and that kind's tier. Both targets' WebMCP
-  offer it, the Node page through `/tools`, and so does every door an add-on adds.
-
-Either way, add its row to the `RUNS` table in `test/tools.test.ts`, which fails for a tool with none.
+The list is `cascade-runtime/app`'s, so a tool is added there: a page tool (it moves the app, or writes after the
+person's Allow) in `PAGE_TOOLS`, with the `kind` of act it takes (its tier follows) and `run(api, input, door)` calling
+only PodApi's operations and moving through `door.open`; a read in `TOOLS` of `cascade-runtime/tools` or of
+`cascade-runtime/app`. A write also needs an entry in `ACTIONS` in `src/confirm.tsx`. Every door then offers it.
