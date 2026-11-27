@@ -19,6 +19,7 @@ import {
 } from "cascade-runtime";
 import { withPod } from "cascade-runtime/tools";
 import { importClaimingEveryProfile } from "./claiming.js";
+import { appPodApi } from "./fixtures.js";
 import { pulled } from "./hospitals.js";
 
 type Chunk = { type: string; [key: string]: unknown };
@@ -66,14 +67,13 @@ type Api = {
   close(): Promise<void>;
 };
 type Schema = { properties?: Record<string, unknown> };
-const { changeSaid, entryId, HISTORY, maps, NEVER, podApi, TOOLS } =
+const { changeSaid, entryId, HISTORY, maps, NEVER, TOOLS } =
   (await import("cascade-runtime/app")) as unknown as {
     changeSaid: (finding: unknown, about: Map<string, unknown>) => string;
     entryId: (entry: string) => string;
     HISTORY: string;
     maps: (output: object) => { about: Map<string, unknown> };
     NEVER: { op: string; with?: string }[];
-    podApi: (host: object) => Api;
     TOOLS: {
       name: string;
       tier: string;
@@ -109,7 +109,7 @@ function apiOverStatin(): Promise<Api> {
     const atorvastatin = timelineIn(await statin.ask(HISTORY)).find(
       ({ notation }) => notation === "617310",
     )!.code;
-    return podApi({
+    return appPodApi<Api>({
       pods: {
         names: async () => [...pods.keys()],
         title: async () => undefined,

@@ -48,7 +48,8 @@ https://github.com/the-cascade-protocol/cascade-runtime-js/pull/N`). While that 
   `bf5c111`** (`git filter-repo`; `git log --follow` reaches back through it).
 - **runtime-js no longer holds copies of the moved files,** so a change to one
   is made here only.
-- **The app runs on `cascade-runtime/app` and `cascade-runtime/vite`.** PodApi, its hosts,
+- **The app runs on `cascade-runtime/app` and `cascade-runtime/vite`,** libraries it depends on: this runtime's
+  own aid to app builders, which a conforming runtime need not provide. PodApi, its hosts,
   the server's handler, the page functions and the words every app says the same way are the
   runtime's, so a change to one is a runtime-js change first, with the pull request pair above. What stays
   here is the app's own: the screens, its tiles and their words (`app/said.ts`), the demo
@@ -70,7 +71,7 @@ https://github.com/the-cascade-protocol/cascade-runtime-js/pull/N`). While that 
 - **The template is TypeScript throughout.** `app/` is what a person gets: its
   pages are React, built by Vite, and every other file is a `.ts` that Node runs
   by type stripping, so the syntax is erasable only (`erasableSyntaxOnly`) and
-  imports name `.ts` files. It imports only `cascade-runtime` (and its `app`, `vite`, `tools` and `fixtures`),
+  imports name `.ts` files. It imports only `cascade-runtime` (and its `app`, `vite`, `tools`, `fixtures`, `terms` and `published`),
   `@the-cascade-protocol/sandbox` and its own dependencies. The sandbox is not
   in `app/package.json`: here it resolves through the root's github
   devDependency, and `npm run build:create` bundles it into the template as

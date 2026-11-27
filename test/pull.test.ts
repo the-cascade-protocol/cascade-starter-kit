@@ -5,7 +5,8 @@ import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 import { loadHospital, serveDemo } from "@the-cascade-protocol/sandbox/node";
 import { openPod } from "cascade-runtime";
-import { nodeHost, podApi } from "cascade-runtime/app";
+import { nodeHost } from "cascade-runtime/app";
+import { type AppPodApi, appPodApi } from "./fixtures.js";
 import { rowOf } from "./hospitals.js";
 import { gone } from "./settled.js";
 
@@ -29,7 +30,7 @@ describe("Reaching the demo hospitals from the Node server · nodeHospitals()", 
   describe("given a pod's `connect` to a demo hospital, approved at the listener", () => {
     let folder: string;
     let listener: Awaited<ReturnType<typeof serveDemo>> | undefined;
-    let api: ReturnType<typeof podApi> | undefined;
+    let api: AppPodApi | undefined;
     let fhirBase: string;
     let authorize: string;
     let returned: unknown;
@@ -47,7 +48,7 @@ describe("Reaching the demo hospitals from the Node server · nodeHospitals()", 
         [{ ...data, autoApprove: "pt-1001" }],
         { listener },
       );
-      api = podApi({ ...nodeHost({ folder: at }), ...reached } as never);
+      api = appPodApi({ ...nodeHost({ folder: at }), ...reached });
       const { connection: n, authorize: toSignIn } = await api.connect({
         pod: "pod",
         fhirBase,

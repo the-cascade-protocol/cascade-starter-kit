@@ -9,8 +9,6 @@ export default defineConfig(({ mode }) => ({
     react(),
     cascadeRuntime({ browser: mode === "browser", app: true }),
   ],
-  // The first visit's chunk holds cascade-runtime/app's browser build, about 750 kB in one file that a bundler cannot
-  // shrink; with the chat add-on, its window is already its own lazy chunk (583 kB: mostly assistant-ui and zod, the AI
-  // SDK is about 140 kB of it).
-  build: { chunkSizeWarningLimit: 1000 },
+  // With the chat add-on, its window is already its own lazy chunk (583 kB: mostly assistant-ui and zod, the AI SDK is about 140 kB of it).
+  build: { chunkSizeWarningLimit: 650 },
 }));

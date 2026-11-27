@@ -5,15 +5,12 @@ import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 import { loadHospital } from "@the-cascade-protocol/sandbox/node";
 import { openPod, pullFiles } from "cascade-runtime";
-import { nodeHost, podApi } from "cascade-runtime/app";
+import { nodeHost } from "cascade-runtime/app";
 import { replayKit } from "cascade-runtime/fixtures";
 import { importClaimingEveryProfile } from "./claiming.js";
+import { type AppPodApi, appPodApi } from "./fixtures.js";
 import { pulled } from "./hospitals.js";
 import { removed } from "./settled.js";
-
-const { SECTIONS } = (await import(
-  new URL("../../app/said.ts", import.meta.url).href
-)) as { SECTIONS: NonNullable<Parameters<typeof podApi>[1]>["sections"] };
 
 const STATIN = "story-statin";
 const ATORVASTATIN = "617310";
@@ -24,7 +21,7 @@ type Line = { sentence: string; tag?: string };
 /** What `worth_a_look` says of `pod`, over the reference tables the installed cascade-runtime carries and the app's tiles. */
 let folder: string;
 let worth: (pod: string) => Promise<Line[]>;
-let api: ReturnType<typeof podApi>;
+let api: AppPodApi;
 
 /** Martin's kit pod, and the statin story's with a second atorvastatin of another strength. */
 before(
@@ -71,7 +68,7 @@ before(
     );
     assert.equal(imported.refused, undefined);
     await pod.close();
-    api = podApi(nodeHost({ folder }), { sections: SECTIONS });
+    api = appPodApi(nodeHost({ folder }));
     worth = async (name) =>
       (await api.tool({ pod: name, tool: "worth_a_look" })).value as Line[];
   },

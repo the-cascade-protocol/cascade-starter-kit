@@ -32,6 +32,14 @@ export const said: Record<string, any> = {
     } as never),
 };
 
+/** PodApi as the app builds it, over the app's tiles: how a test builds one, so none leaves them out. */
+export type AppPodApi = ReturnType<typeof runtime.podApi>;
+export function appPodApi(host: object): AppPodApi;
+export function appPodApi<Api>(host: object): Api;
+export function appPodApi(host: object): unknown {
+  return runtime.podApi(host as never, { sections: app.SECTIONS });
+}
+
 export const ALLERGIES = "pod/My active allergies";
 export const CONDITIONS = "pod/My active conditions";
 export const LABS = "pod/My lab results";

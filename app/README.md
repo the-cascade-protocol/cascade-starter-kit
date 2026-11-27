@@ -3,7 +3,8 @@
 An app on a Cascade pod: a React app that shows what a pod holds, served on
 Node over the pods in `pods/` or built to run in a browser alone, and commands
 to load, make, remove and ask pods. The screens are yours to change;
-`cascade-runtime/app` is a library you depend on, and `cascade-runtime` keeps the
+`cascade-runtime/app` is a library you depend on, this runtime's own aid to app
+builders (a conforming runtime need not provide it), and `cascade-runtime` keeps the
 pods: this app never writes a pod's files itself.
 
 It is written in TypeScript, on [React](https://react.dev) with
@@ -195,8 +196,8 @@ which Node runs as it is.
   starts it, `app.ts` mounts `appHandler` of `cascade-runtime/app`, which serves every operation of
   PodApi as `POST /api/<operation>`, JSON in and out, the tool list's reads for the page, and
   refuses another site's requests, and gives it the pages. `demo-hospitals.ts` gives PodApi the demo hospitals the
-  server answers. `browser.ts` is `npm run browser`, and `samples.ts` what its samples carry for a first
-  visit.
+  server answers. `browser.ts` is `npm run browser`, which makes the samples with `looks` of
+  `cascade-runtime/vite` and the app's tiles.
 - `demo-hospital/`: the pretend hospitals, a package of this app's own.
 - `pods.ts`: what the commands share: where pods live, which one a command works on, deleting them and loading the
   kits again, and the addresses of a pod's page and its trend.

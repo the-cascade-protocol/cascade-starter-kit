@@ -29,9 +29,9 @@ async function bundled(mode?: string) {
   return { chunks, modules };
 }
 
-/** The modules of cascade-runtime a page may hold: its browser build, which is bundled into a file and its chunks, and its terms. */
-const BROWSER_BUILD =
-  /\/node_modules\/cascade-runtime\/dist\/browser\/(app|index|chunk-[A-Z0-9]+)\.js$|\/node_modules\/cascade-runtime\/dist\/src\/terms\.js$/;
+/** The modules of cascade-runtime that hold the engine: its browser build, its pod and Oxigraph. */
+const ENGINE =
+  /\/node_modules\/cascade-runtime\/dist\/(browser\/|src\/browser\/|src\/pod\.js$)|\/node_modules\/oxigraph\//;
 
 /** A module of the chat window: the AI SDK, assistant-ui, or the window's own code. */
 const ofChat = (id: string) =>
@@ -52,10 +52,10 @@ describe("The app's bundle for each target · vite build", () => {
       ({ chunks, modules } = await bundled());
     });
 
-    it("holds the browser build of cascade-runtime/app, whose `remoteApi` is the client of the server's routes", () => {
+    it("holds the `remoteApi` of cascade-runtime/app, the client of the server's routes", () => {
       assert.ok(
         modules.some((id) =>
-          id.endsWith("/node_modules/cascade-runtime/dist/browser/app.js"),
+          id.endsWith("/node_modules/cascade-runtime/dist/src/app/remote.js"),
         ),
         "the bundle has no client of the server's routes",
       );
@@ -71,12 +71,11 @@ describe("The app's bundle for each target · vite build", () => {
       );
     });
 
-    it("holds no other module of cascade-runtime than its browser build and its terms, and no server code", () => {
+    it("holds no module of the browser build of cascade-runtime, of its engine or of Oxigraph, and no server code", () => {
       assert.deepEqual(
         modules.filter(
           (id) =>
-            (id.includes("/node_modules/cascade-runtime/") &&
-              !BROWSER_BUILD.test(id)) ||
+            ENGINE.test(id) ||
             id.includes("/app/server/") ||
             id.includes("/node_modules/@hono/") ||
             id.includes("/node_modules/hono/"),
@@ -100,12 +99,12 @@ describe("The app's bundle for each target · vite build", () => {
       );
     });
 
-    it("keeps the chunk a first visit loads under 1 MB", () => {
+    it("keeps the chunk a first visit loads under 500 kB", () => {
       assert.ok(
         chunks
           .filter(({ isEntry }) => isEntry)
-          .every(({ code }) => code.length < 1_000_000),
-        "the first visit's chunk passed 1 MB: the chat window is lazy so that it stays under Vite's warning",
+          .every(({ code }) => code.length < 500_000),
+        "the first visit's chunk passed 500 kB: the chat window is lazy so that it stays under Vite's warning",
       );
     });
 

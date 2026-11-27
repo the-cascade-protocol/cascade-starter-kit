@@ -29,9 +29,9 @@ export default tseslint.config(
         "error",
         {
           selector:
-            "ImportDeclaration[source.value='cascade-runtime'][importKind!='type'] > ImportSpecifier[importKind!='type'][imported.name!='Refusal'], ImportExpression[source.value='cascade-runtime']",
+            "ImportDeclaration[source.value='cascade-runtime'][importKind!='type'] > ImportSpecifier[importKind!='type'], ImportExpression[source.value='cascade-runtime']",
           message:
-            "The Node target's bundle carries cascade-runtime/app's browser build and no more of the runtime: only src/hosts/browser.ts reaches the rest of cascade-runtime in the page.",
+            "The Node target's bundle carries only what the pages use of cascade-runtime/app: only src/hosts/browser.ts reaches cascade-runtime itself in the page.",
         },
         {
           selector:

@@ -1,7 +1,6 @@
 // A pod's page, as a person reads it: the person's name, how many records from how many places, what is worth a look,
 // what changed after a medication started or stopped, a tile per kind of record with its table in a box, and a way
 // to bring in more. It is drawn from the pod's answers first; what the tables say of them fills it in once known.
-import { Refusal } from "cascade-runtime";
 import { useEffect, useState } from "react";
 import { flushSync } from "react-dom";
 import { useRevalidator, type LoaderFunctionArgs } from "react-router";
@@ -28,6 +27,7 @@ import {
   personName,
   placeOf,
   pullSaid,
+  Refusal,
   REPORTS,
   resultsSaid,
   rounded,

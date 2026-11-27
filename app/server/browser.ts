@@ -10,16 +10,19 @@ import { fileURLToPath } from "node:url";
 import { getRequestListener } from "@hono/node-server";
 import type { HttpBindings } from "@hono/node-server";
 import { samplesToPublish } from "cascade-runtime/published";
+import { looks } from "cascade-runtime/vite";
 import { Hono } from "hono";
 import { build } from "vite";
+import { SECTIONS } from "../said.ts";
 import { withPages } from "./app.ts";
-import { looks } from "./samples.ts";
 
 const APP = fileURLToPath(new URL("../", import.meta.url));
 const OUT = join(APP, "dist-browser");
 
 stdout.write("Making the kits' samples, which a first visit copies…\n");
-const samples = await samplesToPublish({ lookups: looks });
+const samples = await samplesToPublish({
+  lookups: (pod, tables) => looks(pod, tables, { sections: SECTIONS }),
+});
 stdout.write("Building the app for a browser into dist-browser/…\n");
 env.CASCADE_SAMPLES = [...samples.kits.keys()].join(" ");
 await build({

@@ -1,7 +1,8 @@
 # For an agent building on this app
 
 This app was made from the Cascade starter. The screens are yours to change;
-`cascade-runtime/app` is a library you depend on: PodApi, its hosts, the
+`cascade-runtime/app` is a library you depend on, this runtime's own aid to app
+builders (a conforming runtime need not provide it): PodApi, its hosts, the
 server's handler and the words every app says the same way. `cascade-runtime`
 keeps the pods, under `pods/<name>/`. The app
 starts with four, Alex Rivera's, Priya Natarajan's, Martin Okafor's (two
@@ -140,8 +141,8 @@ The app, `npm run ask` and every add-on reach the pods through
 `podApi(host, { sections: SECTIONS })` of `cascade-runtime/app`, plain JSON in
 and out, each operation with one input type, its route's schema (`Input` of
 `cascade-runtime/app`), and one output type (`Output`), which the handler also
-serves as `POST /api/<operation>`; `pod.ts` (`npm run pod:load`, and `npm run reset`
-through `resetAll` in `pods.ts`) writes pods with `openPod` and `replayKit` directly,
+serves as `POST /api/<operation>`; `pod.ts` (`npm run pod:load`) writes pods with `replayKit` directly
+(`npm run reset`, through `resetAll` in `pods.ts`, loads them through `loadSample` of `cascade-runtime/app`),
 and `console.ts` opens a raw `Pod` through `openWithoutWords`;
 an encrypted pod is opened only by the app, with its six words (`src/newpod.tsx`,
 at `/encrypted-pods/<name>`), and `npm run ask` refuses it, as its host is
@@ -172,7 +173,7 @@ pretend: on Node they answer on a loopback port of their own (`serveDemo`), in
 a browser from the service worker the build carries.
 The title bar's File menu runs `podApi`'s `deleteAll` and `resetAll`; both keep
 the reference tables, and on Node `resetAll` then loads the kits through
-`restoreKits` in `pods.ts`, as `npm run reset` does; Help, About says the app's
+`restoreKits` of `cascade-runtime/app`, as `npm run reset` does; Help, About says the app's
 name and version and the `cascade-runtime` it runs on.
 Under the pods, the sidebar lists the sources of the reference tables the pods
 are matched with (`sourcesOf(held())`, from `tablesBeside`). `/tables/<id>/`
@@ -237,7 +238,8 @@ An app never:
 ## The starter
 
 This app was made from a starter: the screens are yours to change, and
-`cascade-runtime/app` is a library you depend on. The pods stay under
+`cascade-runtime/app` is a library you depend on, this runtime's own aid to app
+builders (a conforming runtime need not provide it). The pods stay under
 `pods/<name>/`. It is made with four,
 `alex-rivera`, `priya-natarajan`, `martin-okafor` and `tamsin-vale`.
 
