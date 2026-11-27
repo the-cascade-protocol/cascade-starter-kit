@@ -66,7 +66,7 @@ const PAGES = join(ROOT, "build", "pages");
 /** The components the page serves, as the package carries them. */
 const SERVED = join(PAGES, "try", "cascade-runtime", "components");
 /** The hub, the front page of the runtime's site, which try/ is a row of. */
-const HUB = "https://the-cascade-protocol.github.io/cascade-runtime-js/";
+const HUB = "https://reference.cascadeprotocol.org/";
 
 /** The page's addresses: paths under its base, try/. */
 const AT = {
