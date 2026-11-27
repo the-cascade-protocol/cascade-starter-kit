@@ -9,9 +9,9 @@ numbered v1, and no claim is made that it is fit for clinical use.
 
 ## Docs
 
-- [The Cascade hub](https://the-cascade-protocol.github.io/cascade-runtime-js/): where to go for each thing, and every repository.
-- [Quick start](https://the-cascade-protocol.github.io/cascade-runtime-js/start.html): how to start an app on the runtime.
-- [API](https://the-cascade-protocol.github.io/cascade-runtime-js/api/): the API an app calls.
+- [The Cascade hub](https://reference.cascadeprotocol.org/): where to go for each thing, and every repository.
+- [Quick start](https://reference.cascadeprotocol.org/start.html): how to start an app on the runtime.
+- [API](https://reference.cascadeprotocol.org/api/): the API an app calls.
 - [Try a pod in the browser](https://the-cascade-protocol.github.io/cascade-starter-kit/try/): try a pod in the browser.
 
 ## What is here
