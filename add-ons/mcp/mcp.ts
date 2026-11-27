@@ -3,10 +3,10 @@
 import { chdir, exit, stderr, stdin } from "node:process";
 import { fileURLToPath, URL } from "node:url";
 import { serveStdio } from "@modelcontextprotocol/server/stdio";
+import { nodeHost, podApi } from "cascade-runtime/app";
 import { podServer } from "./mcp-server.ts";
-import { nodeHost } from "./node-host.ts";
-import { podApi } from "./pod-api.ts";
 import { PODS, trendUrl } from "./pods.ts";
+import { SECTIONS } from "./said.ts";
 
 chdir(fileURLToPath(new URL(".", import.meta.url)));
 
@@ -18,7 +18,9 @@ function unsaid(_kind: string, error: Error) {
   told = true;
 }
 
-const api = podApi(nodeHost({ folder: PODS, opensEncrypted: false, unsaid }));
+const api = podApi(nodeHost({ folder: PODS, opensEncrypted: false, unsaid }), {
+  sections: SECTIONS,
+});
 const serving = serveStdio(() => podServer(api, { viewOf: trendUrl }).build());
 
 stdin.on("close", async () => {

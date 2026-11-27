@@ -3,14 +3,13 @@
 import { existsSync } from "node:fs";
 import { argv, stdout } from "node:process";
 import { openPod } from "cascade-runtime";
+import { answersFolder, deletePod, messageOf } from "cascade-runtime/app";
 import { replayKit } from "cascade-runtime/fixtures";
 import {
-  answersFolder,
   argumentsOf,
   checkName,
-  deletePod,
-  messageOf,
   podFolder,
+  PODS,
   refuse,
   resetAll,
 } from "./pods.ts";
@@ -67,10 +66,10 @@ async function create() {
 async function reset() {
   const { positionals } = argumentsOf(args, "npm run pod:reset <name>", {}, 1);
   const name = checkName(positionals[0]);
-  if (!existsSync(podFolder(name)) && !existsSync(answersFolder(name)))
+  if (!existsSync(podFolder(name)) && !existsSync(answersFolder(name, PODS)))
     refuse(`there is no pod ${name}`);
   try {
-    await deletePod(name);
+    await deletePod(name, PODS);
   } catch (error) {
     const { code } = error as { code?: unknown };
     if (code === "EBUSY" || code === "EPERM")

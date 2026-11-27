@@ -11,12 +11,26 @@ import {
   codeStems,
   terms,
 } from "cascade-runtime";
+import * as runtime from "cascade-runtime/app";
 import { importClaimingEveryProfile } from "./claiming.js";
 import { pulled } from "./hospitals.js";
 
-export const said = await import(
-  new URL("../../app/said.ts", import.meta.url).href
-);
+const app = await import(new URL("../../app/said.ts", import.meta.url).href);
+
+/**
+ * What the tests read of the app's words: `cascade-runtime/app`'s, with `entryOf` over the app's tiles as the app gives
+ * them, and the app's own (`SECTIONS`, `openingOrder`, `didNote`, `firstQuestion`, `suggestedQuestions`).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const said: Record<string, any> = {
+  ...runtime,
+  ...app,
+  entryOf: (answers: unknown, id: string, options = {}) =>
+    runtime.entryOf(answers as never, id, {
+      sections: app.SECTIONS,
+      ...options,
+    } as never),
+};
 
 export const ALLERGIES = "pod/My active allergies";
 export const CONDITIONS = "pod/My active conditions";
@@ -28,6 +42,7 @@ export const REVIEW = "entry/What needs review";
 export const SOURCES = "entry/Where it came from";
 export const VARIANTS = "pod/My genetic variants";
 export const REPORTS = "pod/What each report says of a variant";
+const IMPORTS = "pod/What each import brought in";
 
 export const GROUPS = {
   iri: "urn:uuid:c1a6678c-2b4d-4287-b852-9039e6a71afd",
@@ -207,7 +222,20 @@ export function storyPods(): Promise<Map<string, Story>> {
       assert.equal(imported.refused, undefined, patient);
       const answers = Object.fromEntries(
         await Promise.all(
-          (said.QUESTIONS as string[]).map(
+          [
+            ...new Set([
+              SOURCES,
+              SEEN,
+              REVIEW,
+              VARIANTS,
+              REPORTS,
+              HISTORY,
+              IMPORTS,
+              ...(app.SECTIONS as { question?: string }[]).flatMap(
+                ({ question }) => question ?? [],
+              ),
+            ]),
+          ].map(
             async (question) => [question, await pod.ask(question)] as const,
           ),
         ),

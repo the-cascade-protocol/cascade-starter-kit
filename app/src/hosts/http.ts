@@ -1,13 +1,12 @@
 // The Node target's host: PodApi at the server's `/api/`, beside the app, and the chat at its `/chat` when the chat
 // add-on is here. The bundle carries the typed client only: no server code and no runtime.
+import { Refusal } from "cascade-runtime";
+import { idleCounted, type Person, remoteApi } from "cascade-runtime/app";
 import { lazy } from "react";
-import { type Person, refusal } from "../../said.ts";
 import type { ChatModel, Host, HostChat, PodApi, ReadTool } from "../api.tsx";
-import { counted } from "../idle.ts";
-import { remoteApi } from "./remote.ts";
 
 const BASE = new URL(import.meta.env.BASE_URL, location.href);
-const api: PodApi = counted(remoteApi(BASE.href));
+const api: PodApi = idleCounted(remoteApi(BASE.href));
 /** The chat add-on's window, found by Vite when it builds the app: none without the add-on, which then has no chat. */
 const [chatWindow] = Object.values(
   import.meta.glob<{ ChatWindow: HostChat["Window"] }>("../chat/window.tsx"),
@@ -41,7 +40,7 @@ const reads: Host["reads"] = {
     };
     throw body.refused === undefined
       ? new Error(`the tool ${name} answered ${response.status}`)
-      : refusal(body.refused);
+      : new Refusal(body.refused);
   },
 };
 

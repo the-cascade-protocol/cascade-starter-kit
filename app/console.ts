@@ -3,13 +3,8 @@
 import { argv } from "node:process";
 import { start } from "node:repl";
 import { Refusal } from "cascade-runtime";
-import {
-  argumentsOf,
-  choosePod,
-  openWithoutWords,
-  podFolder,
-  refuse,
-} from "./pods.ts";
+import { openWithoutWords } from "cascade-runtime/app";
+import { argumentsOf, choosePod, podFolder, refuse } from "./pods.ts";
 
 const { values } = argumentsOf(
   argv.slice(2),

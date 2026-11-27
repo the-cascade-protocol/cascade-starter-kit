@@ -28,15 +28,14 @@ import {
 } from "react";
 import { useLocation, useNavigate } from "react-router";
 import {
-  firstQuestion,
   maps,
-  suggestedQuestions,
   type Abouts,
   type Answers,
   type Finding as Changed,
-  type ToolInput,
+  type PageToolInput,
   type VariantsSaid,
-} from "../../said.ts";
+} from "cascade-runtime/app";
+import { firstQuestion, suggestedQuestions } from "../../said.ts";
 import { routed, useAddress } from "../address.tsx";
 import { type ChatModel, useHost } from "../api.tsx";
 import type { Asked } from "../ask.tsx";
@@ -312,7 +311,7 @@ function Thread({
     transport,
     onToolCall: ({ toolCall }) => {
       const { toolName, toolCallId } = toolCall;
-      void run(toolName, toolCall.input as ToolInput).then((answer) => {
+      void run(toolName, toolCall.input as PageToolInput).then((answer) => {
         if (answer === undefined || gone.current) return;
         void helpers.current.addToolOutput(
           "output" in answer

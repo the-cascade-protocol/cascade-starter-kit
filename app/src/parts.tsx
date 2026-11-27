@@ -2,9 +2,12 @@
 // and a button that is a form of its own.
 import { useEffect, type FormEvent, type ReactNode } from "react";
 import { Form } from "react-router";
-import { TAGS } from "../said.ts";
+import { DIFFERS, NEEDS_REVIEW } from "cascade-runtime/app";
 import { useHere } from "./address.tsx";
 import { tag as tagLook, tagWarm } from "./look.ts";
+
+/** The tags drawn warm; `TAGS` is every tag there is. */
+const WARM: ReadonlySet<string> = new Set([DIFFERS, NEEDS_REVIEW]);
 
 let closing = false;
 
@@ -123,13 +126,7 @@ export function Tag({ tag }: { tag: string }) {
   return (
     <>
       {" "}
-      <span
-        className={
-          TAGS.find((each) => each.tag === tag)?.warm ? tagWarm : tagLook
-        }
-      >
-        {tag}
-      </span>
+      <span className={WARM.has(tag) ? tagWarm : tagLook}>{tag}</span>
     </>
   );
 }

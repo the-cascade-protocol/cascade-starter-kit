@@ -1,17 +1,18 @@
 // What every screen sits in: the title bar with its File and Help menus, the pods and the reference tables down the
 // side, the screen in `main`, and the line that says what the page is doing.
-import { useEffect, type ReactNode } from "react";
 import {
+  revalidateWhenIdle,
   personName,
   sourcesOf,
   tableId,
   type Person,
   type Series,
-} from "../said.ts";
+} from "cascade-runtime/app";
+import { useEffect, type ReactNode } from "react";
+import { useRevalidator } from "react-router";
 import { useAddress } from "./address.tsx";
 import type { About } from "./api.tsx";
 import { useSaying } from "./doing.ts";
-import { useIdleRevalidation } from "./idle.ts";
 import { ClipboardNote, NewPod } from "./newpod.tsx";
 import { muted, quiet, warm } from "./look.ts";
 import { Box, Pending, PostButton } from "./parts.tsx";
@@ -240,7 +241,8 @@ export function Layout({
 }) {
   const address = useAddress();
   useClosing();
-  useIdleRevalidation();
+  const { revalidate } = useRevalidator();
+  useEffect(() => revalidateWhenIdle(revalidate), [revalidate]);
   return (
     <>
       <header className="bar flex items-center gap-4 bg-bar px-5 py-[0.6rem] text-on-bar max-md:gap-2 max-md:px-4">

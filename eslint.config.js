@@ -14,29 +14,9 @@ export default tseslint.config(
         "error",
         {
           selector:
-            "ImportDeclaration[source.value!='cascade-runtime/terms'][source.value!='cascade-runtime/tools'][source.value!='cascade-runtime'], ImportDeclaration[source.value='cascade-runtime'][importKind!='type'], ImportExpression, ExportNamedDeclaration[source], ExportAllDeclaration",
+            "ImportDeclaration[source.value!='cascade-runtime/app'][source.value!='cascade-runtime/terms'], ImportExpression, ExportNamedDeclaration[source], ExportAllDeclaration",
           message:
-            "What the pages say runs everywhere, as plain functions: said.ts imports only the runtime's terms and tools, and its types.",
-        },
-      ],
-    },
-  },
-  {
-    files: ["app/pod-api.ts"],
-    rules: {
-      "no-restricted-syntax": [
-        "error",
-        {
-          selector:
-            "ImportDeclaration[source.value!=/^(cascade-runtime|cascade-runtime\\/tools|\\.\\/said\\.ts|\\.\\/server\\/inputs\\.ts)$/], ImportDeclaration[source.value='./server/inputs.ts'][importKind!='type'], ImportExpression, ExportNamedDeclaration[source], ExportAllDeclaration",
-          message:
-            "PodApi runs in a browser too: it imports only cascade-runtime, cascade-runtime/tools and ./said.ts, the types of its inputs from ./server/inputs.ts, and re-exports nothing.",
-        },
-        {
-          selector:
-            'ImportDeclaration[source.value="cascade-runtime"] > ImportSpecifier[imported.name=/^(tablesBeside|loopbackSignIn|configureTables|configureRuntime|browserBuildVersion|finishSignIn|popupSignIn|appTables|checkTables|warm|podTitle|deletePod)$/]',
-          message:
-            "PodApi imports only what cascade-runtime exports in both conditions: not tablesBeside, loopbackSignIn, configureTables or the browser-only exports.",
+            "What the app's pages say runs everywhere, as plain functions: said.ts imports only cascade-runtime/app, which both targets have, and the runtime's terms, and re-exports nothing.",
         },
       ],
     },
@@ -49,9 +29,15 @@ export default tseslint.config(
         "error",
         {
           selector:
-            "ImportDeclaration[source.value=/(^cascade-runtime$|pod-api\\.ts$)/][importKind!='type'], ImportExpression[source.value=/(^cascade-runtime$|pod-api\\.ts$)/]",
+            "ImportDeclaration[source.value='cascade-runtime'][importKind!='type'] > ImportSpecifier[importKind!='type'][imported.name!='Refusal'], ImportExpression[source.value='cascade-runtime']",
           message:
-            "The Node target's bundle carries no runtime: only src/hosts/browser.ts reaches cascade-runtime and PodApi in the page.",
+            "The Node target's bundle carries cascade-runtime/app's browser build and no more of the runtime: only src/hosts/browser.ts reaches the rest of cascade-runtime in the page.",
+        },
+        {
+          selector:
+            "ImportDeclaration[source.value='cascade-runtime/app'] > ImportSpecifier[importKind!='type'][imported.name=/^(podApi|browserHost|popupSignIns)$/]",
+          message:
+            "A screen reaches PodApi through the host: only src/hosts/browser.ts makes it in the page.",
         },
         {
           selector:

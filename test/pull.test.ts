@@ -5,13 +5,13 @@ import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 import { loadHospital, serveDemo } from "@the-cascade-protocol/sandbox/node";
 import { openPod } from "cascade-runtime";
+import { nodeHost, podApi } from "cascade-runtime/app";
 import { rowOf } from "./hospitals.js";
 import { gone } from "./settled.js";
 
-const { nodeHost, nodeHospitals } = (await import(
-  new URL("../../app/node-host.ts", import.meta.url).href
+const { nodeHospitals } = (await import(
+  new URL("../../app/server/demo-hospitals.ts", import.meta.url).href
 )) as {
-  nodeHost: (options: { folder: string }) => object;
   nodeHospitals: (
     origin: string,
     demo: object[],
@@ -19,16 +19,6 @@ const { nodeHost, nodeHospitals } = (await import(
   ) => { hospitals: object; world: object; back: (url: URL) => unknown };
 };
 type Connected = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
-const { podApi } = (await import(
-  new URL("../../app/pod-api.ts", import.meta.url).href
-)) as {
-  podApi: (
-    host: object,
-  ) => Record<
-    "connect" | "connection",
-    (input: object) => Promise<Connected>
-  > & { close(): Promise<void> };
-};
 
 /**
  * On Node the app serves its demo hospitals from a listener of its own, and `nodeHospitals` gives PodApi the directory, the
@@ -57,12 +47,12 @@ describe("Reaching the demo hospitals from the Node server · nodeHospitals()", 
         [{ ...data, autoApprove: "pt-1001" }],
         { listener },
       );
-      api = podApi({ ...nodeHost({ folder: at }), ...reached });
+      api = podApi({ ...nodeHost({ folder: at }), ...reached } as never);
       const { connection: n, authorize: toSignIn } = await api.connect({
         pod: "pod",
         fhirBase,
       });
-      authorize = toSignIn;
+      authorize = toSignIn as string;
       const approved = await globalThis.fetch(authorize, {
         redirect: "manual",
       });

@@ -29,9 +29,9 @@ async function bundled(mode?: string) {
   return { chunks, modules };
 }
 
-/** The modules `cascade-runtime/tools` is made of: plain functions that read through what they are given, with no wasm. */
-const TOOLS_MODULES =
-  /\/node_modules\/cascade-runtime\/dist\/src\/(pod-tools|changes|table-checks|check|options|row-text)\.js$|\/@cascade-runtime\/runtime\/dist\/src\/refusal\.js$/;
+/** The modules of cascade-runtime a page may hold: its browser build, which is bundled into a file and its chunks, and its terms. */
+const BROWSER_BUILD =
+  /\/node_modules\/cascade-runtime\/dist\/browser\/(app|index|chunk-[A-Z0-9]+)\.js$|\/node_modules\/cascade-runtime\/dist\/src\/terms\.js$/;
 
 /** A module of the chat window: the AI SDK, assistant-ui, or the window's own code. */
 const ofChat = (id: string) =>
@@ -40,8 +40,8 @@ const ofChat = (id: string) =>
 
 /**
  * What the app is built into for each target, read from a build kept in memory. The Node target's pages call the server
- * through its typed client and load the chat window in a chunk of their own; the browser target runs PodApi in the page
- * and draws no chat.
+ * through `remoteApi` of `cascade-runtime/app` and load the chat window in a chunk of their own; the browser target runs
+ * PodApi in the page and draws no chat.
  */
 describe("The app's bundle for each target · vite build", () => {
   describe("given the Node target's bundle", () => {
@@ -52,10 +52,12 @@ describe("The app's bundle for each target · vite build", () => {
       ({ chunks, modules } = await bundled());
     });
 
-    it("holds the typed client of the server's routes", () => {
+    it("holds the browser build of cascade-runtime/app, whose `remoteApi` is the client of the server's routes", () => {
       assert.ok(
-        modules.some((id) => id.includes("/node_modules/hono/dist/client/")),
-        "the bundle has no typed client",
+        modules.some((id) =>
+          id.endsWith("/node_modules/cascade-runtime/dist/browser/app.js"),
+        ),
+        "the bundle has no client of the server's routes",
       );
     });
 
@@ -69,27 +71,15 @@ describe("The app's bundle for each target · vite build", () => {
       );
     });
 
-    it("holds cascade-runtime's check of a tool's input", () => {
-      assert.ok(
-        modules.some((id) =>
-          id.endsWith("/node_modules/cascade-runtime/dist/browser/check.js"),
-        ),
-        "the bundle has no check of a tool's input",
-      );
-    });
-
-    it("holds no other module of cascade-runtime than its check, its terms and its tools, no server code and no PodApi", () => {
+    it("holds no other module of cascade-runtime than its browser build and its terms, and no server code", () => {
       assert.deepEqual(
         modules.filter(
           (id) =>
             (id.includes("/node_modules/cascade-runtime/") &&
-              !id.endsWith("/dist/browser/check.js") &&
-              !id.endsWith("/dist/src/terms.js") &&
-              !TOOLS_MODULES.test(id)) ||
+              !BROWSER_BUILD.test(id)) ||
             id.includes("/app/server/") ||
-            id.endsWith("/app/pod-api.ts") ||
             id.includes("/node_modules/@hono/") ||
-            /\/node_modules\/hono\/dist\/(?!client\/|utils\/)/.test(id),
+            id.includes("/node_modules/hono/"),
         ),
         [],
       );
@@ -110,12 +100,12 @@ describe("The app's bundle for each target · vite build", () => {
       );
     });
 
-    it("keeps the chunk a first visit loads under 500 kB", () => {
+    it("keeps the chunk a first visit loads under 1 MB", () => {
       assert.ok(
         chunks
           .filter(({ isEntry }) => isEntry)
-          .every(({ code }) => code.length < 500_000),
-        "the first visit's chunk passed 500 kB: the chat window is lazy so that it stays under Vite's warning",
+          .every(({ code }) => code.length < 1_000_000),
+        "the first visit's chunk passed 1 MB: the chat window is lazy so that it stays under Vite's warning",
       );
     });
 

@@ -167,15 +167,26 @@ function trendOf(
   asked: { test?: string; medication?: string },
 ) {
   const labs = answers[LABS]!;
-  const input = said.trendInput({ changes, labs }, asked);
+  const strongest = changes.find(
+    ({ direction }: LabChange) => direction !== "not enough results",
+  );
+  const [first] = said.testsIn(labs);
+  const input: { test: string; medication?: string } | undefined = asked.test
+    ? {
+        test: asked.test,
+        ...(asked.medication && { medication: asked.medication }),
+      }
+    : strongest
+      ? said.trendOfFinding(strongest)
+      : first && { test: first.notation ?? first.code };
   return draw("TrendPage", {
     pod: name,
     titles: new Map(),
     read: {
       labs,
-      series: labSeriesIn(labs, input.test),
+      series: labSeriesIn(labs, input!.test),
       timeline: timelineIn(answers[HISTORY]!),
-      medication: input.medication,
+      medication: input!.medication,
     },
   });
 }
@@ -2904,7 +2915,7 @@ function importedTwice(story: Story) {
  * medication was prescribed, started or stopped. The trend charts that test with the medication's days marked. Both
  * say what moved and never why.
  */
-describe("Seeing what changed after a medication · PodPage, TrendPage, withImportHistory(), trendInput()", () => {
+describe("Seeing what changed after a medication · PodPage, TrendPage", () => {
   describe("given a story pod whose cholesterol fell after a statin was prescribed", () => {
     let finding: LabChange;
     let page: string;
@@ -3062,9 +3073,12 @@ describe("Seeing what changed after a medication · PodPage, TrendPage, withImpo
         string,
         (test: string, medication: string, day: string) => string
       >;
-      const days = said.MEDICATION_DAY as Record<string, { said: string }>;
+      const days = ["start of use", "prescription written", "end of use"].map(
+        (dateIs) =>
+          said.medicationDay({ medication: { dateIs } }) as { said: string },
+      );
       const sentences = Object.values(changed).flatMap((say) =>
-        Object.values(days).map((day) => say("Test", "Medication", day.said)),
+        days.map((day) => say("Test", "Medication", day.said)),
       );
       assert.ok(sentences.length > 0, "the sentences to check");
       for (const sentence of sentences) assert.doesNotMatch(sentence, CAUSES);
@@ -3210,52 +3224,6 @@ describe("Seeing what changed after a medication · PodPage, TrendPage, withImpo
     it("lists the imports with no word of a new version when the medication has one version", () => {
       assert.match(unrevised, /The pod's records came in 2 imports/);
       assert.doesNotMatch(unrevised, /came in a new version/);
-    });
-  });
-
-  describe("withImportHistory(answers, changes, ask)", () => {
-    let story: Story;
-    let twice: ReturnType<typeof importedTwice>["twice"];
-    before(async () => {
-      story = (await storyPods()).get("story-statin")!;
-      twice = importedTwice(story).twice;
-    });
-    const recorder = () => {
-      const asked: string[] = [];
-      return {
-        asked,
-        ask: async (question: string) => {
-          asked.push(question);
-          return [];
-        },
-      };
-    };
-
-    it("asks nothing for a pod of one import, or with no lab change", async () => {
-      const oneImport = recorder();
-      await said.withImportHistory(
-        { ...story.answers, [IMPORTS]: twice[IMPORTS].slice(0, 2) },
-        story.changes,
-        oneImport.ask,
-      );
-      const noChange = recorder();
-      await said.withImportHistory(
-        { ...story.answers, [IMPORTS]: twice[IMPORTS] },
-        [],
-        noChange.ask,
-      );
-      assert.deepEqual(oneImport.asked, [], "one import");
-      assert.deepEqual(noChange.asked, [], "no lab change");
-    });
-
-    it("asks for each record's revisions and what each version says, for two imports and a lab change", async () => {
-      const both = recorder();
-      await said.withImportHistory(
-        { ...story.answers, [IMPORTS]: twice[IMPORTS] },
-        story.changes,
-        both.ask,
-      );
-      assert.deepEqual(both.asked, [REVISIONS, VERSIONS]);
     });
   });
 
@@ -3470,16 +3438,6 @@ describe("Seeing what changed after a medication · PodPage, TrendPage, withImpo
       const none = trendOf("ines-calloway", story, { test: "18262-6" });
       assert.equal(count(none, /class="mark [a-z]+[ "]/g), 0);
       assert.equal(count(none, /class="marker[ "]/g), 6);
-    });
-
-    it("picks the strongest lab change's test and medication, from `trendInput()`, when the address names neither", () => {
-      assert.deepEqual(
-        said.trendInput(
-          { changes: story.changes, labs: story.answers[LABS]! },
-          {},
-        ),
-        { test: "18262-6", medication: "617310" },
-      );
     });
   });
 });

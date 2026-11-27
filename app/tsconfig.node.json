@@ -16,5 +16,5 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["*.ts", "server", "vite", "test", "e2e"]
+  "include": ["*.ts", "server", "test", "e2e"]
 }

@@ -23,14 +23,11 @@ const { podServer, QUESTIONS, WARNING } = (await import(
   QUESTIONS: string[];
   WARNING: string;
 };
-const { podApi } = (await import(
-  new URL("../../build/app/pod-api.ts", import.meta.url).href
-)) as { podApi: (host: object) => Api };
-const { nodeHost } = (await import(
-  new URL("../../build/app/node-host.ts", import.meta.url).href
-)) as {
-  nodeHost: (options: { folder: string; opensEncrypted: boolean }) => object;
-};
+const { nodeHost, podApi } =
+  (await import("cascade-runtime/app")) as unknown as {
+    nodeHost: (options: { folder: string; opensEncrypted: boolean }) => object;
+    podApi: (host: object) => Api;
+  };
 const { trendUrl } = (await import(
   new URL("../../build/app/pods.ts", import.meta.url).href
 )) as { trendUrl: (pod: string, trend: object) => string };
@@ -48,9 +45,10 @@ interface Tool {
     },
   ): Promise<unknown>;
 }
-const { NEVER, TOOLS } = (await import(
-  new URL("../../build/app/tools.ts", import.meta.url).href
-)) as { NEVER: { op: string; with?: string }[]; TOOLS: Tool[] };
+const { NEVER, TOOLS } = (await import("cascade-runtime/app")) as unknown as {
+  NEVER: { op: string; with?: string }[];
+  TOOLS: Tool[];
+};
 
 const STATIN = "story-statin";
 

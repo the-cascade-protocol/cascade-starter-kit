@@ -9,15 +9,14 @@ import {
 } from "react-router";
 import {
   byFamily,
-  ENCRYPT_BOX,
   familyFirst,
-  hospitalName,
   listed,
   personName,
   slug,
   UNOPENED,
   type Person,
-} from "../said.ts";
+} from "cascade-runtime/app";
+import { ENCRYPT_BOX, hospitalName } from "../said.ts";
 import type { Stayed } from "./actions.tsx";
 import type { PodApi } from "./api.tsx";
 import { lead, muted, note, row, stack, stackLabel } from "./look.ts";

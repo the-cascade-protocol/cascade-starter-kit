@@ -14,7 +14,6 @@ const SOURCES = [
   "said.ts",
   "addresses.ts",
   "vite.config.ts",
-  "vite",
   "package.json",
   "package-lock.json",
   "../package-lock.json",

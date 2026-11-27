@@ -65,32 +65,23 @@ type Api = {
   tool(input: object): Promise<{ found: { key: string }[] }>;
   close(): Promise<void>;
 };
-const { maps, podApi } = (await import(
-  new URL("../../build/app/pod-api.ts", import.meta.url).href
-)) as {
-  maps: (output: object) => { about: Map<string, unknown> };
-  podApi: (host: object) => Api;
-};
 type Schema = { properties?: Record<string, unknown> };
-const { NEVER, TOOLS } = (await import(
-  new URL("../../build/app/tools.ts", import.meta.url).href
-)) as {
-  NEVER: { op: string; with?: string }[];
-  TOOLS: {
-    name: string;
-    tier: string;
-    ofPod?: true;
-    opens?: true;
-    inputSchema: Schema;
-  }[];
-};
-const { changeSaid, entryId, HISTORY } = (await import(
-  new URL("../../build/app/said.ts", import.meta.url).href
-)) as {
-  changeSaid: (finding: unknown, about: Map<string, unknown>) => string;
-  entryId: (entry: string) => string;
-  HISTORY: string;
-};
+const { changeSaid, entryId, HISTORY, maps, NEVER, podApi, TOOLS } =
+  (await import("cascade-runtime/app")) as unknown as {
+    changeSaid: (finding: unknown, about: Map<string, unknown>) => string;
+    entryId: (entry: string) => string;
+    HISTORY: string;
+    maps: (output: object) => { about: Map<string, unknown> };
+    NEVER: { op: string; with?: string }[];
+    podApi: (host: object) => Api;
+    TOOLS: {
+      name: string;
+      tier: string;
+      ofPod?: true;
+      opens?: true;
+      inputSchema: Schema;
+    }[];
+  };
 
 const STATIN = "story-statin";
 /** What the tables call atorvastatin, which no record of the pod calls it. */

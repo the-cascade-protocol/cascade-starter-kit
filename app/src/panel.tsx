@@ -17,7 +17,7 @@ import {
   sourcesOf,
   tableId,
   versionName,
-} from "../said.ts";
+} from "cascade-runtime/app";
 import { useAddress } from "./address.tsx";
 import type { PodApi } from "./api.tsx";
 import { card, lead, muted, tagWarm } from "./look.ts";

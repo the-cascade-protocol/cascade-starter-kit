@@ -4,8 +4,9 @@ import { cpSync, existsSync, rmSync, statSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { argv, stdout } from "node:process";
 import { fileURLToPath } from "node:url";
+import { messageOf } from "cascade-runtime/app";
 import { kitDownload } from "cascade-runtime/fixtures";
-import { argumentsOf, messageOf, refuse } from "./pods.ts";
+import { argumentsOf, refuse } from "./pods.ts";
 
 const EXPORT = "apple_health_export";
 const APP = dirname(fileURLToPath(import.meta.url));

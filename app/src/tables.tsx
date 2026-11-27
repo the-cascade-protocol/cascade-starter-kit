@@ -18,7 +18,7 @@ import {
   type ClassificationRow,
   type Series,
   type Source,
-} from "../said.ts";
+} from "cascade-runtime/app";
 import { ROUTED, useAddress } from "./address.tsx";
 import type { PodApi } from "./api.tsx";
 import { screen, useApp, useRead } from "./screen.tsx";

@@ -1,53 +1,26 @@
-// What the scripts share: where pods live, what a pod may be called, which pod a script works on, and the addresses
-// the app's pages have.
-import { readdir, readFile, rm } from "node:fs/promises";
+// What the scripts share: where pods live, which pod a script works on, the app's own addresses, and what a script says
+// when it stops.
+import { readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { env, exit, stderr } from "node:process";
-import { performance } from "node:perf_hooks";
 import { fileURLToPath, URL } from "node:url";
 import { parseArgs, type ParseArgsOptionsConfig } from "node:util";
-import { openPod, type Pod, Refusal, Unopened } from "cascade-runtime";
-import { addresses } from "./addresses.ts";
-import { notOpenedHere } from "./pod-api.ts";
 import {
-  phaseOn,
-  replayKit,
-  seconds,
-  setUpTables,
-} from "cascade-runtime/fixtures";
+  messageOf,
+  podNames,
+  POD_NAME,
+  restoreKits,
+} from "cascade-runtime/app";
+import { phaseOn, setUpTables } from "cascade-runtime/fixtures";
+import { addresses } from "./addresses.ts";
 
 /** Every pod of this app is a folder here, named as the pod. */
 export const PODS = fileURLToPath(new URL("pods/", import.meta.url));
-/** The kits whose pods the app was made with. */
-export const KITS = [
-  "alex-rivera",
-  "priya-natarajan",
-  "martin-okafor",
-  "tamsin-vale",
-];
-export const POD_NAME = /^[a-z0-9][a-z0-9._-]*$/;
 export const NO_POD =
   "No pod loaded. Run `npm run reset` to load Alex's, Priya's, Martin's and Tamsin's pods.";
 
 export function podFolder(name: string): string {
   return join(PODS, name);
-}
-
-/**
- * The pod `name` in `folder`, opened without words, as the scripts and the MCP server do: an encrypted pod is a
- * `Refusal` saying so in one line, since only the app asks for its six words.
- */
-export async function openWithoutWords(
-  name: string,
-  folder: string,
-): Promise<Pod> {
-  try {
-    return await openPod(folder);
-  } catch (error) {
-    if (error instanceof Unopened && error.outcome === "secret needed")
-      throw new Refusal(notOpenedHere(name));
-    throw error;
-  }
 }
 
 const ADDRESS = addresses();
@@ -74,93 +47,21 @@ export function trendUrl(
   return new URL(trendPath(name, trend), appOrigin()).href;
 }
 
-/**
- * The pods there are, by name: a folder still empty is none, so reading it never makes a pod, and neither is
- * `.answers`, where the runtime keeps each pod's answers.
- */
-export async function podNames(folder = PODS): Promise<string[]> {
-  try {
-    const entries = await readdir(folder, { withFileTypes: true });
-    const names: string[] = [];
-    for (const entry of entries)
-      if (
-        entry.isDirectory() &&
-        !entry.name.startsWith(".") &&
-        (await readdir(join(folder, entry.name))).length > 0
-      )
-        names.push(entry.name);
-    return names.sort();
-  } catch (error) {
-    if (missing(error)) return [];
-    throw error;
-  }
-}
-
-/** The folder the runtime keeps the pod's answers in. */
-export function answersFolder(name: string, folder = PODS): string {
-  return join(folder, ".answers", name);
-}
-
-/** Whether `error` says a file or folder is not there. */
-const missing = (error: unknown) =>
-  (error as NodeJS.ErrnoException | undefined)?.code === "ENOENT";
-
-/** The title `pod.json` keeps for the pod, the name typed when it was made; undefined where none is kept. */
-export async function podTitle(
-  name: string,
-  folder = PODS,
-): Promise<string | undefined> {
-  try {
-    const kept = JSON.parse(
-      await readFile(join(answersFolder(name, folder), "pod.json"), "utf8"),
-    ) as { title?: unknown };
-    return typeof kept.title === "string" ? kept.title : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-/** Removes the pod and its answers. */
-export async function deletePod(name: string, folder = PODS): Promise<void> {
-  await rm(join(folder, name), { recursive: true, force: true });
-  await rm(answersFolder(name, folder), { recursive: true, force: true });
-}
-
 /** Removes every pod and every answer kept, and keeps the reference tables; gives the names of the pods there were. */
 export async function deleteAll(): Promise<string[]> {
-  const names = await podNames();
+  const names = await podNames(PODS);
   let entries: string[];
   try {
     entries = await readdir(PODS);
   } catch (error) {
-    if (missing(error)) return names;
+    if ((error as NodeJS.ErrnoException | undefined)?.code === "ENOENT")
+      return names;
     throw error;
   }
   for (const entry of entries)
     if (entry !== ".tables")
       await rm(join(PODS, entry), { recursive: true, force: true });
   return names;
-}
-
-/** Loads the kits' pods into `folder`; `out(text)`, when given, is told each kit with its seconds. Gives their names. */
-export async function restoreKits(
-  folder = PODS,
-  out?: (text: string) => void,
-): Promise<string[]> {
-  for (const kit of KITS) {
-    const started = performance.now();
-    out?.(`\nLoading the pod ${kit}, from the kit the package carries…`);
-    try {
-      await replayKit(kit, join(folder, kit));
-      out?.(` loaded in ${seconds(started)}\n`);
-    } catch (error) {
-      out?.("\n");
-      throw new Error(`the pod ${kit} did not load: ${messageOf(error)}`, {
-        cause: error,
-      });
-    }
-  }
-  return [...KITS];
 }
 
 /**
@@ -181,10 +82,6 @@ export async function resetAll(
   await restoreKits(PODS, out);
   return names;
 }
-
-/** What an error says, whatever was thrown. */
-export const messageOf = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error);
 
 /** Says why, and ends the script with exit code 2. */
 export function refuse(reason: string): never {
@@ -225,7 +122,7 @@ export function argumentsOf<const Options extends ParseArgsOptionsConfig>(
 
 /** The pod named by `--pod`, or the only one there is. */
 export async function choosePod(given: string | undefined): Promise<string> {
-  const names = await podNames();
+  const names = await podNames(PODS);
   if (given !== undefined) {
     checkName(given);
     if (!names.includes(given))

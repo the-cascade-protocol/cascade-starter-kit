@@ -3,7 +3,11 @@
 // reads the screen again.
 import { useCallback, useLayoutEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { PAGE_TOOLS, type PageDoor, type ToolInput } from "../../said.ts";
+import {
+  PAGE_TOOLS,
+  type PageDoor,
+  type PageToolInput,
+} from "cascade-runtime/app";
 import { useToolSteps } from "../actions.tsx";
 import { routed, useAddress } from "../address.tsx";
 import { isRefusal, useHost } from "../api.tsx";
@@ -29,7 +33,7 @@ export function usePageTools(opened: (address: string) => void) {
     latest.current = { navigate, here: pathname + search, opened };
   });
   return useCallback(
-    async (name: string, input: ToolInput): Promise<Answer | undefined> => {
+    async (name: string, input: PageToolInput): Promise<Answer | undefined> => {
       const tool = PAGE_TOOLS.find((each) => each.name === name);
       if (tool === undefined) return undefined;
       const door: PageDoor = {

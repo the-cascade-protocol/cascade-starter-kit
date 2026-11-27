@@ -1,10 +1,10 @@
 // `npm run ask -- [--pod <name>] "<question>"`: the question's rows, one JSON object a line.
 import { argv, stdout } from "node:process";
 import { Refusal } from "cascade-runtime";
+import { nodeHost, podApi } from "cascade-runtime/app";
 import type { PodReads } from "cascade-runtime/tools";
-import { nodeHost } from "./node-host.ts";
-import { podApi } from "./pod-api.ts";
 import { argumentsOf, choosePod, PODS, refuse } from "./pods.ts";
+import { SECTIONS } from "./said.ts";
 
 const { positionals, values } = argumentsOf(
   argv.slice(2),
@@ -13,7 +13,9 @@ const { positionals, values } = argumentsOf(
   1,
 );
 const name = await choosePod(values.pod);
-const api = podApi(nodeHost({ folder: PODS, opensEncrypted: false }));
+const api = podApi(nodeHost({ folder: PODS, opensEncrypted: false }), {
+  sections: SECTIONS,
+});
 let rows;
 try {
   ({ rows } = (await api.ask({

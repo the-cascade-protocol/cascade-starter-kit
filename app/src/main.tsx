@@ -9,8 +9,12 @@ import { RouterProvider } from "react-router/dom";
 import { BASE } from "./address.tsx";
 import { HostProvider, type Host } from "./api.tsx";
 import { routes } from "./App.tsx";
-import { failed, ready, watch } from "./doing.ts";
-import { warm } from "./engine.ts";
+import {
+  pageFailed,
+  pageReady,
+  warmEngine,
+  watchRouter,
+} from "cascade-runtime/app";
 import "./style.css";
 
 const root = document.getElementById("root") ?? document.body;
@@ -43,7 +47,7 @@ if (!underBase) {
       </main>,
     ),
   );
-  ready();
+  pageReady();
 } else {
   const hosted: Promise<{ host: Host }> =
     import.meta.env.MODE === "browser"
@@ -54,8 +58,8 @@ if (!underBase) {
       const router = createBrowserRouter(routes(host), {
         basename: BASE.replace(/\/$/, ""),
       });
-      watch(router);
-      warm(host);
+      watchRouter(router);
+      warmEngine(host);
       await initialized(router);
       createRoot(root).render(
         <StrictMode>
@@ -68,6 +72,6 @@ if (!underBase) {
     .catch((error: unknown) => {
       const said = error instanceof Error ? error.message : String(error);
       root.textContent = `The app could not start: ${said}`;
-      failed(`the app could not start: ${said}`);
+      pageFailed(`the app could not start: ${said}`);
     });
 }
